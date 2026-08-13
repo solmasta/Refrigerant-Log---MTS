@@ -1,0 +1,265 @@
+import { useCallback, useEffect, useState } from 'react';
+import Navbar from '../components/Navbar.jsx';
+import StatCard from '../components/StatCard.jsx';
+import Roster from '../components/Roster.jsx';
+import LogsTable from '../components/LogsTable.jsx';
+import PurchasesTable from '../components/PurchasesTable.jsx';
+import { api, exportUrl } from '../api.js';
+import { useReferenceData } from '../hooks/useReferenceData.js';
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'logs', label: 'Usage Logs' },
+  { id: 'purchases', label: 'Purchases' },
+  { id: 'roster', label: 'Roster' },
+  { id: 'settings', label: 'Settings' },
+];
+
+export default function AdminDashboard() {
+  const [tab, setTab] = useState('overview');
+  const [summary, setSummary] = useState(null);
+  const [technicians, setTechnicians] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [filters, setFilters] = useState({ technicianId: '', refrigerantType: '', dateFrom: '', dateTo: '' });
+  const { refrigerantTypes } = useReferenceData();
+
+  const refresh = useCallback(() => {
+    api.adminSummary().then(setSummary);
+    api.technicians().then((d) => setTechnicians(d.technicians));
+  }, []);
+
+  const refreshEntries = useCallback(() => {
+    const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    api.listLogs(params).then((d) => setLogs(d.logs));
+    api.listPurchases(params).then((d) => setPurchases(d.purchases));
+  }, [filters]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    refreshEntries();
+  }, [refreshEntries]);
+
+  async function handleDeleteLog(id) {
+    if (!confirm('Delete this log entry? This cannot be undone.')) return;
+    await api.deleteLog(id);
+    refreshEntries();
+    refresh();
+  }
+
+  async function handleDeletePurchase(id) {
+    if (!confirm('Delete this purchase entry? This cannot be undone.')) return;
+    await api.deletePurchase(id);
+    refreshEntries();
+    refresh();
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Navbar />
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Team roster, refrigerant usage, purchases, and EPA-ready exports.
+        </p>
+
+        <div className="mt-6 flex flex-wrap gap-1 rounded-lg bg-slate-200/60 p-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                tab === t.id
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'overview' && summary && (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Technicians" value={summary.technicianCount} accent="sky" />
+            <StatCard label="Log entries" value={summary.logCount} accent="violet" />
+            <StatCard
+              label="Recovered vs. added"
+              value={`${summary.totalRecoveredLbs.toFixed(1)} / ${summary.totalAddedLbs.toFixed(1)} lbs`}
+              sub="Recovered / Added across all logs"
+              accent="emerald"
+            />
+            <StatCard
+              label="Purchased"
+              value={`${summary.totalPurchasedLbs.toFixed(1)} lbs`}
+              sub={`$${summary.totalSpent.toFixed(2)} spent · ${summary.purchaseCount} orders`}
+              accent="amber"
+            />
+          </div>
+        )}
+
+        {(tab === 'logs' || tab === 'purchases') && (
+          <div className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <FilterField label="Technician">
+              <select
+                value={filters.technicianId}
+                onChange={(e) => setFilters((f) => ({ ...f, technicianId: e.target.value }))}
+                className={filterInput}
+              >
+                <option value="">All</option>
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.firstName} {t.lastName}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Refrigerant">
+              <select
+                value={filters.refrigerantType}
+                onChange={(e) => setFilters((f) => ({ ...f, refrigerantType: e.target.value }))}
+                className={filterInput}
+              >
+                <option value="">All</option>
+                {refrigerantTypes.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="From">
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                className={filterInput}
+              />
+            </FilterField>
+            <FilterField label="To">
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                className={filterInput}
+              />
+            </FilterField>
+            <a
+              href={exportUrl(tab === 'logs' ? 'logs' : 'purchases')}
+              className="ml-auto rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Export CSV
+            </a>
+          </div>
+        )}
+
+        {tab === 'logs' && (
+          <div className="mt-4">
+            <LogsTable logs={logs} showTechnician onDelete={handleDeleteLog} />
+          </div>
+        )}
+
+        {tab === 'purchases' && (
+          <div className="mt-4">
+            <PurchasesTable purchases={purchases} showTechnician onDelete={handleDeletePurchase} />
+          </div>
+        )}
+
+        {tab === 'roster' && (
+          <div className="mt-6">
+            <Roster technicians={technicians} />
+          </div>
+        )}
+
+        {tab === 'settings' && <AdminSettings />}
+      </main>
+    </div>
+  );
+}
+
+function FilterField({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const filterInput =
+  'rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100';
+
+function AdminSettings() {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.adminChangePassword(currentPassword, newPassword);
+      setMessage('Password updated.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900">Change admin password</h2>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <input
+          type="password"
+          required
+          placeholder="Current password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          className={filterInput + ' w-full'}
+        />
+        <input
+          type="password"
+          required
+          placeholder="New password (min. 8 characters)"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className={filterInput + ' w-full'}
+        />
+        <input
+          type="password"
+          required
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className={filterInput + ' w-full'}
+        />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {message && <p className="text-sm text-emerald-600">{message}</p>}
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+        >
+          {saving ? 'Saving…' : 'Update password'}
+        </button>
+      </form>
+    </div>
+  );
+}

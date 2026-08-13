@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+
+# Runtime data store (auto-created; do not commit real team data)
+server/data/db.json
