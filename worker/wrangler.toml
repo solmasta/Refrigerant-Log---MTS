@@ -11,5 +11,5 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "refrigerant-log-mts"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "62b5a6e9-8fb8-446d-b384-d9956bb5b473"
 migrations_dir = "migrations"
