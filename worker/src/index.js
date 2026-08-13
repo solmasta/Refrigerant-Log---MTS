@@ -22,7 +22,7 @@ import {
 } from './db.js';
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
-import { sendMonthlyReminders } from './email.js';
+import { sendEmail, sendMonthlyReminders } from './email.js';
 import { createBackup, listBackups, getBackup, pruneOldBackups } from './backup.js';
 
 const app = new Hono();
@@ -343,6 +343,54 @@ app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
   const result = await sendMonthlyReminders(c.env, technicians);
   return c.json(result);
 });
+
+// ---------- Export emails ----------
+// Sends export reports (roster / logs / purchases / combined) as real
+// emails via Resend, instead of relying on a mailto: link — mailto bodies
+// get silently truncated by most email clients around ~2000 characters,
+// which cuts off exactly the kind of long, multi-technician reports this
+// sends.
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+app.post('/api/admin/send-export-email', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { to, subject, body: text } = body;
+
+  const recipients = String(to || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (!recipients.length) {
+    return c.json({ error: 'At least one recipient email is required' }, 400);
+  }
+  const invalid = recipients.filter((r) => !EMAIL_PATTERN.test(r));
+  if (invalid.length) {
+    return c.json({ error: `Invalid email address: ${invalid.join(', ')}` }, 400);
+  }
+  if (!subject || !text) {
+    return c.json({ error: 'Subject and body are required' }, 400);
+  }
+
+  const html = `<pre style="font-family: ui-monospace, monospace; white-space: pre-wrap;">${escapeHtml(text)}</pre>`;
+
+  try {
+    await sendEmail(c.env, { to: recipients, subject, text, html });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to send email' }, 502);
+  }
+
+  return c.json({ ok: true, sentTo: recipients });
+});
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 // ---------- Database backups ----------
 
