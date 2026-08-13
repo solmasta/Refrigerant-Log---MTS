@@ -29,12 +29,14 @@ export default function TechnicianDashboard() {
   const refreshPending = useCallback(async () => {
     const pending = await getPendingEntries();
     setPendingLogs(
-      pending.filter((e) => e.type === 'log').map((e) => ({ id: e.localId, pending: true, ...e.payload }))
+      pending
+        .filter((e) => e.type === 'log')
+        .map((e) => ({ id: e.localId, pending: true, syncError: e.lastError, ...e.payload }))
     );
     setPendingPurchases(
       pending
         .filter((e) => e.type === 'purchase')
-        .map((e) => ({ id: e.localId, pending: true, ...e.payload }))
+        .map((e) => ({ id: e.localId, pending: true, syncError: e.lastError, ...e.payload }))
     );
   }, []);
 

@@ -14,3 +14,10 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
+
+// Ask the browser not to evict this device's offline queue (IndexedDB)
+// under storage pressure. Best-effort — unsupported or denied is fine,
+// the queue still works, it's just not protected from eviction.
+if (navigator.storage?.persist) {
+  navigator.storage.persist().catch(() => {});
+}

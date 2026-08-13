@@ -210,6 +210,24 @@ the app after a deploy, which is a real risk for compliance software. The
 tradeoff favors always running the current version over working from a
 fully closed state with no signal.
 
+**How the offline queue protects against data loss:**
+
+- The app requests [persistent storage](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist) on load, which tells the browser not to
+  auto-evict the offline queue under storage pressure (best-effort — not
+  all browsers grant it, but the queue works either way).
+- An entry is only ever removed from the device once the server has
+  actually confirmed it was saved — never on a guess.
+- If saving to the device itself fails (e.g. private/incognito browsing,
+  which blocks this kind of storage in some browsers) the form does
+  **not** clear and does **not** claim success — it shows a clear warning
+  telling the technician to screenshot or write down the entry as a
+  backup, since in that specific case there's nowhere left to safely
+  auto-save it.
+- If a queued entry keeps failing to sync for a reason other than "still
+  offline" (rare — e.g. an expired session), its badge in **My Entries**
+  changes from "Pending sync" to "Sync issue" so it doesn't sit silently
+  unnoticed.
+
 ## Data storage
 
 Data lives in a Cloudflare D1 database (SQLite), configured in

@@ -29,7 +29,7 @@ export default function PurchasesTable({ purchases, showTechnician = false, onDe
             <tr key={p.id} className={`hover:bg-slate-50 ${p.pending ? 'bg-amber-50/60' : ''}`}>
               <Td className="whitespace-nowrap">
                 {p.date}
-                {p.pending && <PendingBadge />}
+                {p.pending && <PendingBadge error={p.syncError} />}
               </Td>
               {showTechnician && <Td className="whitespace-nowrap">{p.technicianName}</Td>}
               <Td className="whitespace-nowrap">{p.refrigerantType}</Td>
