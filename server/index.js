@@ -2,10 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { getDb, persist } from './db.js';
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CLIENT_DIST = path.join(__dirname, '..', 'client', 'dist');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -345,6 +351,15 @@ app.get('/api/export/purchases.csv', requireAdmin, (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+// ---------- Serve the built frontend (single-URL deployment) ----------
+
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  app.get(/^(?!\/api\/).*/, (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`Refrigerant Log API listening on http://localhost:${PORT}`);

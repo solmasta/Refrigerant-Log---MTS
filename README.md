@@ -58,9 +58,10 @@ npm run build      # builds client/dist
 ADMIN_PASSWORD=your-secure-password JWT_SECRET=a-long-random-string npm start
 ```
 
-`npm start` runs the API on port 4000 (override with `PORT`). Serve
-`client/dist` with your preferred static host or reverse proxy, forwarding
-`/api/*` requests to the API server.
+`npm start` runs a single server on port 4000 (override with `PORT`) that
+serves both the API (`/api/*`) and the built frontend (everything else),
+so the whole app lives behind one URL — e.g. `https://yourapp.com/` for
+technicians and `https://yourapp.com/admin/login` for admins.
 
 ### Environment variables
 
@@ -68,7 +69,34 @@ ADMIN_PASSWORD=your-secure-password JWT_SECRET=a-long-random-string npm start
 |------------------|----------------------------------------------------------------------|-----------------------------|
 | `ADMIN_PASSWORD` | Initial admin password (only used the first time the data file is created — change it from Admin → Settings afterward) | `ChangeMe123!` |
 | `JWT_SECRET`     | Secret used to sign login sessions. Set a long random value in production. | `dev-secret-change-in-production` |
-| `PORT`           | API server port                                                     | `4000`                      |
+| `PORT`           | Server port                                                        | `4000`                      |
+| `DB_PATH`        | Path to the JSON data file. Point this at a persistent disk in production (see below) — otherwise data is lost on every redeploy/restart. | `server/data/db.json` |
+
+## Deploying to Render (recommended)
+
+This repo includes a `render.yaml` blueprint that provisions everything
+needed as a single web service — one URL for both technicians and admin.
+
+1. Push this repo to GitHub (already done if you're reading this from the repo).
+2. In the [Render dashboard](https://dashboard.render.com), click **New +** → **Blueprint**, and select this repository. Render will read `render.yaml` automatically.
+3. Render will prompt for the `ADMIN_PASSWORD` environment variable (it's marked `sync: false` in the blueprint so it isn't stored in the repo) — set it to whatever you want the admin password to be. `JWT_SECRET` is generated automatically.
+4. Deploy. Render builds the client, starts the server, and attaches a 1 GB persistent disk mounted at `/var/data` for `server/data/db.json` (via `DB_PATH`) so your team's data survives restarts and redeploys.
+5. Once live, your links are:
+   - **Technicians:** `https://<your-service>.onrender.com/technician/login` (or just the root URL — the landing page links to it)
+   - **Admin:** `https://<your-service>.onrender.com/admin/login`
+
+The blueprint uses Render's **Starter** plan — the free tier doesn't
+support persistent disks, so on free tier your data would be wiped on
+every restart. If you later add a custom domain in Render, the same
+`/technician/login` and `/admin/login` paths carry over.
+
+### Deploying elsewhere
+
+The app is a single Node process (`npm start`) that serves both the API
+and the static frontend, so it runs on Railway, Fly.io, a plain VPS, or
+any Node host the same way: run `npm run install:all && npm run build`,
+then `npm start`, with `ADMIN_PASSWORD`, `JWT_SECRET`, and a `DB_PATH`
+pointed at persistent storage set as environment variables.
 
 ## Data storage
 
