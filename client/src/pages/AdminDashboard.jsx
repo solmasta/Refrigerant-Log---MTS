@@ -66,12 +66,12 @@ export default function AdminDashboard() {
           Team roster, refrigerant usage, purchases, and EPA-ready exports.
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-1 rounded-lg bg-slate-200/60 p-1">
+        <div className="mt-6 flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${
                 tab === t.id
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -100,6 +100,8 @@ export default function AdminDashboard() {
             />
           </div>
         )}
+
+        {tab === 'overview' && <RecentActivity logs={logs} purchases={purchases} />}
 
         {(tab === 'logs' || tab === 'purchases') && (
           <div className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -191,6 +193,56 @@ function FilterField({ label, children }) {
 
 const filterInput =
   'rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100';
+
+function RecentActivity({ logs, purchases }) {
+  const items = [
+    ...logs.map((l) => ({
+      id: `log-${l.id}`,
+      createdAt: l.createdAt,
+      text: `${l.technicianName} logged ${l.serviceType.toLowerCase()} on ${l.equipmentId}`,
+      detail: `${l.refrigerantType} · ${l.date}`,
+      accent: 'bg-violet-100 text-violet-700',
+      tag: 'Log',
+    })),
+    ...purchases.map((p) => ({
+      id: `purchase-${p.id}`,
+      createdAt: p.createdAt,
+      text: `${p.technicianName} purchased ${p.quantity} ${p.unit} of ${p.refrigerantType}`,
+      detail: `${p.supplier || 'No supplier noted'} · ${p.date}`,
+      accent: 'bg-amber-100 text-amber-700',
+      tag: 'Purchase',
+    })),
+  ]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 8);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900">Recent activity</h2>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          Nothing logged yet. Entries will show up here as the team records usage and purchases.
+        </p>
+      ) : (
+        <ul className="mt-4 divide-y divide-slate-100">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+              <span
+                className={`mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${item.accent}`}
+              >
+                {item.tag}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm text-slate-800">{item.text}</p>
+                <p className="text-xs text-slate-500">{item.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function AdminSettings() {
   const [currentPassword, setCurrentPassword] = useState('');

@@ -25,11 +25,14 @@ export default function TechnicianLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-4">
+      <Link
+        to="/"
+        className="absolute left-4 top-4 text-sm text-slate-500 hover:text-slate-700 sm:left-6 sm:top-6"
+      >
+        &larr; Back
+      </Link>
       <div className="w-full max-w-sm">
-        <Link to="/" className="mb-6 inline-block text-sm text-slate-500 hover:text-slate-700">
-          &larr; Back
-        </Link>
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">Technician Sign In</h1>
           <p className="mt-1 text-sm text-slate-500">
