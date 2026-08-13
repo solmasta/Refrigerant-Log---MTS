@@ -4,7 +4,9 @@ import LogForm from '../components/LogForm.jsx';
 import PurchaseForm from '../components/PurchaseForm.jsx';
 import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
+import PendingSyncBanner from '../components/PendingSyncBanner.jsx';
 import { api } from '../api.js';
+import { getPendingEntries } from '../utils/offlineQueue.js';
 
 const TABS = [
   { id: 'log', label: 'Log Usage' },
@@ -16,15 +18,35 @@ export default function TechnicianDashboard() {
   const [tab, setTab] = useState('log');
   const [logs, setLogs] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [pendingLogs, setPendingLogs] = useState([]);
+  const [pendingPurchases, setPendingPurchases] = useState([]);
 
   const refresh = useCallback(() => {
     api.listLogs().then((d) => setLogs(d.logs));
     api.listPurchases().then((d) => setPurchases(d.purchases));
   }, []);
 
-  useEffect(() => {
+  const refreshPending = useCallback(async () => {
+    const pending = await getPendingEntries();
+    setPendingLogs(
+      pending.filter((e) => e.type === 'log').map((e) => ({ id: e.localId, pending: true, ...e.payload }))
+    );
+    setPendingPurchases(
+      pending
+        .filter((e) => e.type === 'purchase')
+        .map((e) => ({ id: e.localId, pending: true, ...e.payload }))
+    );
+  }, []);
+
+  const refreshAll = useCallback(() => {
     refresh();
-  }, [refresh]);
+    refreshPending();
+  }, [refresh, refreshPending]);
+
+  useEffect(() => {
+    refreshAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -35,7 +57,14 @@ export default function TechnicianDashboard() {
           Record refrigerant usage and purchases. Entries are saved to the shared team log.
         </p>
 
-        <div className="mt-6 flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1 sm:grid sm:grid-cols-3">
+        <div className="mt-6">
+          <PendingSyncBanner
+            pendingCount={pendingLogs.length + pendingPurchases.length}
+            onSynced={refreshAll}
+          />
+        </div>
+
+        <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1 sm:grid sm:grid-cols-3">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -52,17 +81,17 @@ export default function TechnicianDashboard() {
         </div>
 
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {tab === 'log' && <LogForm onSaved={refresh} />}
-          {tab === 'purchase' && <PurchaseForm onSaved={refresh} />}
+          {tab === 'log' && <LogForm onSaved={refreshAll} />}
+          {tab === 'purchase' && <PurchaseForm onSaved={refreshAll} />}
           {tab === 'history' && (
             <div className="space-y-8">
               <div>
                 <h2 className="mb-3 text-sm font-semibold text-slate-700">Recent usage logs</h2>
-                <LogsTable logs={logs} />
+                <LogsTable logs={[...pendingLogs, ...logs]} />
               </div>
               <div>
                 <h2 className="mb-3 text-sm font-semibold text-slate-700">Recent purchases</h2>
-                <PurchasesTable purchases={purchases} />
+                <PurchasesTable purchases={[...pendingPurchases, ...purchases]} />
               </div>
             </div>
           )}

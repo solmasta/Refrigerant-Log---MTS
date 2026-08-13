@@ -31,6 +31,10 @@ or database to manage, and it's free at this app's scale.
 - **Installable as an app (PWA)** — technicians and admins can add it to
   their phone's home screen with its own icon, so it opens like a native
   app instead of a browser tab. See "Installing on a phone" below.
+- **Works through spotty signal** — if a technician loses connection while
+  filling out a log or purchase (basements, rural sites, etc.), the entry
+  saves on the device and sends automatically once they're back online,
+  with a visible "Pending sync" indicator until it does.
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure
@@ -186,6 +190,25 @@ The app is a PWA (installable web app) — no app store needed.
 Either way, it adds a home screen icon that opens the app full-screen, no
 browser address bar. It's the same live site, not a separate download —
 signing in and all data work exactly the same.
+
+## Working offline
+
+Technicians can fill out and submit a usage log or purchase entry even with
+no signal, as long as the app was already open when they lost connection
+(the realistic field scenario — open it with signal, walk into a basement,
+keep working). The entry is saved on the device and shows a "Pending sync"
+badge in **My Entries**; a banner at the top of the Field Log page shows how
+many entries are waiting and syncs them automatically the moment the
+connection comes back (or tap **Sync now** to retry manually).
+
+**Limitation:** this doesn't make the app itself load while fully offline
+from a cold start — if a technician closes the app/browser entirely while
+offline and tries to reopen it, it won't load until they're back online.
+Caching the app shell for a true cold-start offline load was deliberately
+left out: it would mean the service worker could serve a stale version of
+the app after a deploy, which is a real risk for compliance software. The
+tradeoff favors always running the current version over working from a
+fully closed state with no signal.
 
 ## Data storage
 

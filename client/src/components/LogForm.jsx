@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
+import { queueEntry } from '../utils/offlineQueue.js';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -23,6 +24,7 @@ export default function LogForm({ onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -33,6 +35,7 @@ export default function LogForm({ onSaved }) {
     setSaving(true);
     setError('');
     setSuccess(false);
+    setSavedOffline(false);
     try {
       await api.createLog(form);
       setForm({ ...emptyForm, date: todayIso() });
@@ -40,7 +43,14 @@ export default function LogForm({ onSaved }) {
       onSaved?.();
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err.message);
+      if (err.isNetworkError) {
+        await queueEntry('log', form);
+        setForm({ ...emptyForm, date: todayIso() });
+        setSavedOffline(true);
+        onSaved?.();
+      } else {
+        setError(err.message);
+      }
     } finally {
       setSaving(false);
     }
@@ -169,6 +179,12 @@ export default function LogForm({ onSaved }) {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {success && <p className="text-sm text-emerald-600">Log entry saved.</p>}
+      {savedOffline && (
+        <p className="text-sm text-amber-600">
+          No connection right now — this entry is saved on your device and will send
+          automatically once you're back online.
+        </p>
+      )}
 
       <button
         type="submit"
