@@ -148,6 +148,15 @@ export async function setAdminPasswordHash(db, hash) {
     .run();
 }
 
+export async function getReminderDay(db) {
+  const row = await db.prepare('SELECT reminder_day FROM admin_settings WHERE id = 1').first();
+  return row?.reminder_day ?? 28;
+}
+
+export async function setReminderDay(db, day) {
+  await db.prepare('UPDATE admin_settings SET reminder_day = ? WHERE id = 1').bind(day).run();
+}
+
 export async function insertLog(db, entry) {
   await db
     .prepare(

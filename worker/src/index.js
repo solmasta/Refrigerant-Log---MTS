@@ -10,6 +10,8 @@ import {
   deleteTechnician,
   ensureAdminPasswordHash,
   setAdminPasswordHash,
+  getReminderDay,
+  setReminderDay,
   insertLog,
   listLogs,
   deleteLog,
@@ -320,13 +322,43 @@ app.get('/api/health', (c) => c.json({ ok: true }));
 
 // ---------- Monthly reminder emails ----------
 
+app.get('/api/admin/reminder-settings', requireAdmin, async (c) => {
+  const reminderDay = await getReminderDay(c.env.DB);
+  return c.json({ reminderDay });
+});
+
+app.put('/api/admin/reminder-settings', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const day = Number(body.reminderDay);
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return c.json({ error: 'Reminder day must be a whole number between 1 and 31' }, 400);
+  }
+  await setReminderDay(c.env.DB, day);
+  return c.json({ reminderDay: day });
+});
+
 app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
   const technicians = await listTechniciansWithCounts(c.env.DB);
   const result = await sendMonthlyReminders(c.env, technicians);
   return c.json(result);
 });
 
+function lastDayOfMonthUTC(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
 async function scheduled(event, env) {
+  const now = new Date(event.scheduledTime);
+  const reminderDay = await getReminderDay(env.DB);
+  // If the configured day doesn't exist this month (e.g. 31 in a 30-day
+  // month), fire on the actual last day instead of silently skipping.
+  const targetDay = Math.min(reminderDay, lastDayOfMonthUTC(now));
+
+  if (now.getUTCDate() !== targetDay) {
+    console.log(`Skipping reminder run: today is UTC day ${now.getUTCDate()}, target is ${targetDay}`);
+    return;
+  }
+
   const technicians = await listTechniciansWithCounts(env.DB);
   const result = await sendMonthlyReminders(env, technicians);
   console.log('Monthly reminder run:', JSON.stringify(result));

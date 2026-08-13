@@ -1,0 +1,1 @@
+ALTER TABLE admin_settings ADD COLUMN reminder_day INTEGER NOT NULL DEFAULT 28;
