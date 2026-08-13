@@ -1,0 +1,89 @@
+const DEFAULT_FROM = 'Refrigerant Log MTS <onboarding@resend.dev>';
+
+export async function sendEmail(env, { to, subject, html, text }) {
+  if (!env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured');
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.FROM_EMAIL || DEFAULT_FROM,
+      to,
+      subject,
+      html,
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API error (${res.status}): ${body.slice(0, 300)}`);
+  }
+}
+
+export function buildReminderEmail(technician, appUrl) {
+  const loginUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/technician/login` : null;
+  const monthLabel = new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const subject = `Reminder: update your refrigerant logs before ${monthLabel} closes out`;
+
+  const text = [
+    `Hi ${technician.firstName},`,
+    '',
+    `This is a monthly reminder to make sure your refrigerant usage and purchase entries are logged before ${monthLabel} closes out.`,
+    '',
+    loginUrl ? `Log in here: ${loginUrl}` : null,
+    '',
+    '— Refrigerant Log MTS',
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
+
+  const html = `
+    <p>Hi ${escapeHtml(technician.firstName)},</p>
+    <p>This is a monthly reminder to make sure your refrigerant usage and purchase entries are logged before ${escapeHtml(monthLabel)} closes out.</p>
+    ${loginUrl ? `<p><a href="${escapeHtml(loginUrl)}">Log in to Refrigerant Log MTS</a></p>` : ''}
+    <p>— Refrigerant Log MTS</p>
+  `.trim();
+
+  return { subject, text, html };
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export async function sendMonthlyReminders(env, technicians) {
+  const recipients = technicians.filter((t) => t.email && t.email.trim());
+
+  const results = await Promise.allSettled(
+    recipients.map(async (t) => {
+      const { subject, text, html } = buildReminderEmail(t, env.APP_URL);
+      await sendEmail(env, { to: t.email, subject, text, html });
+      return t.email;
+    })
+  );
+
+  const sent = [];
+  const failed = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') sent.push(r.value);
+    else failed.push({ email: recipients[i].email, error: r.reason?.message || 'Unknown error' });
+  });
+
+  return {
+    totalTechnicians: technicians.length,
+    skippedNoEmail: technicians.length - recipients.length,
+    sent,
+    failed,
+  };
+}

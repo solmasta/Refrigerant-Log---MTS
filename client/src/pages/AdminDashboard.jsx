@@ -245,7 +245,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {tab === 'settings' && <AdminSettings />}
+        {tab === 'settings' && (
+          <>
+            <ReminderEmailsCard />
+            <AdminSettings />
+          </>
+        )}
       </main>
     </div>
   );
@@ -308,6 +313,74 @@ function RecentActivity({ logs, purchases }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function ReminderEmailsCard() {
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+
+  async function handleSend() {
+    if (
+      !confirm(
+        'Send a reminder email right now to every technician with an email on file? This is the same email that goes out automatically on the 28th of each month.'
+      )
+    )
+      return;
+    setSending(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await api.sendReminders();
+      setResult(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900">Monthly reminder emails</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Every technician with an email on file automatically gets a reminder on the 28th of each
+        month to log any outstanding entries. Use this to send it manually, e.g. to test it.
+      </p>
+      <button
+        onClick={handleSend}
+        disabled={sending}
+        className="mt-4 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+      >
+        {sending ? 'Sending…' : 'Send reminder emails now'}
+      </button>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {result && (
+        <div className="mt-3 text-sm">
+          <p className="text-emerald-600">
+            Sent to {result.sent.length} technician{result.sent.length === 1 ? '' : 's'}.
+          </p>
+          {result.skippedNoEmail > 0 && (
+            <p className="mt-1 text-slate-500">
+              Skipped {result.skippedNoEmail} with no email on file.
+            </p>
+          )}
+          {result.failed.length > 0 && (
+            <div className="mt-1 text-red-600">
+              <p>Failed to send to {result.failed.length}:</p>
+              <ul className="ml-4 list-disc">
+                {result.failed.map((f) => (
+                  <li key={f.email}>
+                    {f.email} — {f.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

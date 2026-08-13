@@ -62,6 +62,7 @@ export const api = {
   listPurchases: (params = {}) => request(`/purchases?${new URLSearchParams(params)}`),
   deletePurchase: (id) => request(`/purchases/${id}`, { method: 'DELETE' }),
   adminSummary: () => request('/admin/summary'),
+  sendReminders: () => request('/admin/send-reminders', { method: 'POST' }),
 };
 
 export function exportUrl(kind) {
