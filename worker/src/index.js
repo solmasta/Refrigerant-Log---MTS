@@ -20,6 +20,7 @@ import {
 } from './db.js';
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
+import { sendMonthlyReminders } from './email.js';
 
 const app = new Hono();
 
@@ -317,4 +318,18 @@ app.get('/api/export/purchases.csv', requireAdmin, async (c) => {
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
-export default app;
+// ---------- Monthly reminder emails ----------
+
+app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
+  const technicians = await listTechniciansWithCounts(c.env.DB);
+  const result = await sendMonthlyReminders(c.env, technicians);
+  return c.json(result);
+});
+
+async function scheduled(event, env) {
+  const technicians = await listTechniciansWithCounts(env.DB);
+  const result = await sendMonthlyReminders(env, technicians);
+  console.log('Monthly reminder run:', JSON.stringify(result));
+}
+
+export default { fetch: app.fetch, scheduled };

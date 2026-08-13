@@ -23,6 +23,10 @@ or database to manage, and it's free at this app's scale.
 - **Export** — CSV download, copy-to-clipboard, or a pre-filled email
   template, available for the roster, usage logs, and purchases (with
   optional filters by technician, refrigerant type, and date range).
+- **Monthly reminder emails** — every technician with an email on file
+  automatically gets a reminder on the 28th of each month to log any
+  outstanding entries before the month closes out. Admins can also send it
+  on demand from Admin → Settings.
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure
@@ -137,6 +141,32 @@ need to run `npm run deploy` locally again after that.
 |------------------|-------------------------------------------|----------------------------------------------------------------------|
 | `ADMIN_PASSWORD` | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Admin login password. Change it later from Admin → Settings in the app. |
 | `JWT_SECRET`     | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Secret used to sign login sessions. Use a long random value in production. |
+| `RESEND_API_KEY` | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Required for monthly reminder emails to actually send. See below. |
+| `APP_URL`        | `worker/wrangler.toml` `[vars]` (committed, not secret) | Your live URL, used to build the login link in reminder emails. Already set to your deployment; update if you add a custom domain. |
+
+### Setting up reminder emails
+
+Reminder emails are sent via [Resend](https://resend.com) (free tier: 100
+emails/day, 3,000/month — plenty for a small team).
+
+1. Sign up at [resend.com](https://resend.com) and create an API key
+   (Dashboard → API Keys → Create API Key).
+2. Set it as a Worker secret:
+   ```bash
+   cd worker
+   npx wrangler secret put RESEND_API_KEY
+   ```
+3. That's it — reminders send from `onboarding@resend.dev` by default, which
+   works out of the box without any domain setup. If you'd rather send from
+   your own domain (e.g. `reminders@yourcompany.com`), verify that domain in
+   Resend, then set a `FROM_EMAIL` secret the same way:
+   ```bash
+   npx wrangler secret put FROM_EMAIL
+   # e.g. "Refrigerant Log MTS <reminders@yourcompany.com>"
+   ```
+
+Test it anytime from Admin → Settings → **Send reminder emails now**, without
+waiting for the 28th.
 
 ## Data storage
 
