@@ -16,6 +16,7 @@ function describeFilters(filters, technicians) {
 
 const ROSTER_COLUMNS = [
   { key: 'name', label: 'Technician' },
+  { key: 'email', label: 'Email' },
   { key: 'onboarded', label: 'Onboarded' },
   { key: 'logCount', label: 'Logs' },
   { key: 'purchaseCount', label: 'Purchases' },
@@ -25,6 +26,7 @@ const ROSTER_COLUMNS = [
 function rosterRows(technicians) {
   return technicians.map((t) => ({
     name: `${t.firstName} ${t.lastName}`,
+    email: t.email || '',
     onboarded: new Date(t.createdAt).toLocaleDateString(),
     logCount: t.logCount,
     purchaseCount: t.purchaseCount,

@@ -66,6 +66,23 @@ export default function AdminDashboard() {
     refresh();
   }
 
+  async function handleEditTechnician(id, updates) {
+    await api.updateTechnician(id, updates);
+    refresh();
+    refreshEntries();
+  }
+
+  async function handleDeleteTechnician(id) {
+    if (
+      !confirm(
+        'Remove this technician from the roster? Their past log entries and purchases will be kept for your records, but they will need to be re-added to log new entries.'
+      )
+    )
+      return;
+    await api.deleteTechnician(id);
+    refresh();
+  }
+
   // Always pulls fresh, unfiltered data — independent of whatever filters
   // happen to be set on the Logs/Purchases tabs — so "everything" really is.
   async function fetchAllData() {
@@ -101,20 +118,23 @@ export default function AdminDashboard() {
           />
         </div>
 
-        <div className="mt-6 flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${
-                tab === t.id
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="relative mt-6">
+          <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${
+                  tab === t.id
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-lg bg-gradient-to-l from-slate-200/90 to-transparent sm:hidden" />
         </div>
 
         {tab === 'overview' && summary && (
@@ -217,7 +237,11 @@ export default function AdminDashboard() {
                 buildReport={() => buildRosterReport(technicians)}
               />
             </div>
-            <Roster technicians={technicians} />
+            <Roster
+              technicians={technicians}
+              onEdit={handleEditTechnician}
+              onDelete={handleDeleteTechnician}
+            />
           </div>
         )}
 
