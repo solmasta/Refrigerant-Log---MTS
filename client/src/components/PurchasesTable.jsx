@@ -1,4 +1,4 @@
-import { Th, Td } from './LogsTable.jsx';
+import { Th, Td, PendingBadge, hasValue } from './LogsTable.jsx';
 
 export default function PurchasesTable({ purchases, showTechnician = false, onDelete }) {
   if (!purchases.length) {
@@ -26,15 +26,18 @@ export default function PurchasesTable({ purchases, showTechnician = false, onDe
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {purchases.map((p) => (
-            <tr key={p.id} className="hover:bg-slate-50">
-              <Td className="whitespace-nowrap">{p.date}</Td>
+            <tr key={p.id} className={`hover:bg-slate-50 ${p.pending ? 'bg-amber-50/60' : ''}`}>
+              <Td className="whitespace-nowrap">
+                {p.date}
+                {p.pending && <PendingBadge />}
+              </Td>
               {showTechnician && <Td className="whitespace-nowrap">{p.technicianName}</Td>}
               <Td className="whitespace-nowrap">{p.refrigerantType}</Td>
               <Td className="text-right whitespace-nowrap">
                 {p.quantity} {p.unit}
               </Td>
               <Td className="text-right whitespace-nowrap">
-                {p.cost != null ? `$${p.cost.toFixed(2)}` : '—'}
+                {hasValue(p.cost) ? `$${Number(p.cost).toFixed(2)}` : '—'}
               </Td>
               <Td className="whitespace-nowrap">{p.supplier || '—'}</Td>
               <Td className="whitespace-nowrap">{p.invoiceNumber || '—'}</Td>

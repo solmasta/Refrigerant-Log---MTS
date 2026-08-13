@@ -1,3 +1,15 @@
+function hasValue(v) {
+  return v !== null && v !== undefined && v !== '';
+}
+
+function PendingBadge() {
+  return (
+    <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      Pending sync
+    </span>
+  );
+}
+
 export default function LogsTable({ logs, showTechnician = false, onDelete }) {
   if (!logs.length) {
     return (
@@ -25,8 +37,11 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {logs.map((log) => (
-            <tr key={log.id} className="hover:bg-slate-50">
-              <Td className="whitespace-nowrap">{log.date}</Td>
+            <tr key={log.id} className={`hover:bg-slate-50 ${log.pending ? 'bg-amber-50/60' : ''}`}>
+              <Td className="whitespace-nowrap">
+                {log.date}
+                {log.pending && <PendingBadge />}
+              </Td>
               {showTechnician && <Td className="whitespace-nowrap">{log.technicianName}</Td>}
               <Td>
                 <div className="font-medium text-slate-900">{log.equipmentId}</div>
@@ -38,10 +53,10 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
               <Td className="whitespace-nowrap">{log.refrigerantType}</Td>
               <Td className="whitespace-nowrap">{log.serviceType}</Td>
               <Td className="text-right whitespace-nowrap">
-                {log.amountAdded != null ? `${log.amountAdded} ${log.unit}` : '—'}
+                {hasValue(log.amountAdded) ? `${log.amountAdded} ${log.unit}` : '—'}
               </Td>
               <Td className="text-right whitespace-nowrap">
-                {log.amountRecovered != null ? `${log.amountRecovered} ${log.unit}` : '—'}
+                {hasValue(log.amountRecovered) ? `${log.amountRecovered} ${log.unit}` : '—'}
               </Td>
               <Td className="max-w-xs text-slate-500">
                 <span className="line-clamp-2 whitespace-normal">{log.notes || '—'}</span>
@@ -78,4 +93,4 @@ function Td({ children, className = '' }) {
   return <td className={`px-3 py-2 text-slate-700 ${className}`}>{children}</td>;
 }
 
-export { Th, Td };
+export { Th, Td, PendingBadge, hasValue };

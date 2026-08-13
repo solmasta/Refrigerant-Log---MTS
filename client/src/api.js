@@ -20,24 +20,51 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY);
 }
 
+export class NetworkError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'NetworkError';
+    this.isNetworkError = true;
+  }
+}
+
+export class AuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AuthError';
+    this.isAuthError = true;
+  }
+}
+
 async function request(path, { method = 'GET', body, auth = true } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+
+  let res;
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // fetch() itself throwing (not an HTTP error response) means the
+    // request never reached the server — no connection, not a bad response.
+    throw new NetworkError('No connection to the server');
+  }
 
   const isJson = res.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
     const message = isJson && data.error ? data.error : 'Something went wrong';
-    if (res.status === 401) clearSession();
+    if (res.status === 401) {
+      clearSession();
+      throw new AuthError(message);
+    }
     throw new Error(message);
   }
   return data;
