@@ -5,6 +5,9 @@ import bcrypt from 'bcryptjs';
 import {
   findOrCreateTechnician,
   listTechniciansWithCounts,
+  getTechnician,
+  updateTechnician,
+  deleteTechnician,
   ensureAdminPasswordHash,
   setAdminPasswordHash,
   insertLog,
@@ -106,6 +109,30 @@ app.get('/api/reference-data', (c) =>
 app.get('/api/technicians', requireAdmin, async (c) => {
   const technicians = await listTechniciansWithCounts(c.env.DB);
   return c.json({ technicians });
+});
+
+app.patch('/api/technicians/:id', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { firstName, lastName, email } = body;
+  if (!firstName || !lastName) {
+    return c.json({ error: 'First and last name are required' }, 400);
+  }
+
+  const existing = await getTechnician(c.env.DB, c.req.param('id'));
+  if (!existing) return c.json({ error: 'Technician not found' }, 404);
+
+  const technician = await updateTechnician(c.env.DB, c.req.param('id'), {
+    firstName,
+    lastName,
+    email,
+  });
+  return c.json({ technician });
+});
+
+app.delete('/api/technicians/:id', requireAdmin, async (c) => {
+  const ok = await deleteTechnician(c.env.DB, c.req.param('id'));
+  if (!ok) return c.json({ error: 'Technician not found' }, 404);
+  return c.json({ ok: true });
 });
 
 // ---------- Refrigerant usage logs ----------

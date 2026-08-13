@@ -9,6 +9,7 @@ function rowToTechnician(row) {
     id: row.id,
     firstName: row.first_name,
     lastName: row.last_name,
+    email: row.email || '',
     createdAt: row.created_at,
   };
 }
@@ -92,6 +93,37 @@ export async function listTechniciansWithCounts(db) {
     purchaseCount: row.purchase_count,
     lastEntryAt: row.last_entry_at || null,
   }));
+}
+
+export async function getTechnician(db, id) {
+  const row = await db.prepare('SELECT * FROM technicians WHERE id = ?').bind(id).first();
+  return row ? rowToTechnician(row) : null;
+}
+
+export async function updateTechnician(db, id, { firstName, lastName, email }) {
+  const first = normalizeName(firstName);
+  const last = normalizeName(lastName);
+  await db
+    .prepare('UPDATE technicians SET first_name = ?, last_name = ?, email = ? WHERE id = ?')
+    .bind(first, last, (email || '').trim(), id)
+    .run();
+
+  // Keep the denormalized technician_name on existing entries in sync so
+  // historical logs/purchases display the corrected name too.
+  const fullName = `${first} ${last}`;
+  await db.batch([
+    db.prepare('UPDATE logs SET technician_name = ? WHERE technician_id = ?').bind(fullName, id),
+    db
+      .prepare('UPDATE purchases SET technician_name = ? WHERE technician_id = ?')
+      .bind(fullName, id),
+  ]);
+
+  return getTechnician(db, id);
+}
+
+export async function deleteTechnician(db, id) {
+  const result = await db.prepare('DELETE FROM technicians WHERE id = ?').bind(id).run();
+  return result.meta.changes > 0;
 }
 
 export async function ensureAdminPasswordHash(db, defaultPassword) {

@@ -1,0 +1,1 @@
+ALTER TABLE technicians ADD COLUMN email TEXT NOT NULL DEFAULT '';

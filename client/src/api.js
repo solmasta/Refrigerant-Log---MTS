@@ -53,6 +53,8 @@ export const api = {
   me: () => request('/me'),
   referenceData: () => request('/reference-data', { auth: false }),
   technicians: () => request('/technicians'),
+  updateTechnician: (id, payload) => request(`/technicians/${id}`, { method: 'PATCH', body: payload }),
+  deleteTechnician: (id) => request(`/technicians/${id}`, { method: 'DELETE' }),
   createLog: (payload) => request('/logs', { method: 'POST', body: payload }),
   listLogs: (params = {}) => request(`/logs?${new URLSearchParams(params)}`),
   deleteLog: (id) => request(`/logs/${id}`, { method: 'DELETE' }),
