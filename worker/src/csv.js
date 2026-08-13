@@ -8,8 +8,6 @@ function escapeCell(value) {
 
 export function toCsv(rows, columns) {
   const header = columns.map((c) => c.label).join(',');
-  const lines = rows.map((row) =>
-    columns.map((c) => escapeCell(row[c.key])).join(',')
-  );
+  const lines = rows.map((row) => columns.map((c) => escapeCell(row[c.key])).join(','));
   return [header, ...lines].join('\r\n');
 }

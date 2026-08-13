@@ -5,6 +5,9 @@ recordkeeping. Technicians sign in individually and log usage and purchases;
 admins get a separate dashboard to view the roster, browse all data, and
 export it for compliance reporting.
 
+Runs on Cloudflare Workers with a D1 (SQLite) database — no separate server
+or database to manage, and it's free at this app's scale.
+
 ## Features
 
 - **Technician sign-in** — enter first and last name; new technicians are
@@ -17,20 +20,26 @@ export it for compliance reporting.
   notes.
 - **Refrigerant purchasing log** — date, refrigerant type, quantity, cost,
   supplier, invoice number.
-- **CSV export** — admin can export usage logs and purchases separately,
-  with optional filters by technician, refrigerant type, and date range.
+- **Export** — CSV download, copy-to-clipboard, or a pre-filled email
+  template, available for the roster, usage logs, and purchases (with
+  optional filters by technician, refrigerant type, and date range).
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure
 
 ```
-server/   Express API + JSON file datastore (server/data/db.json, auto-created)
+worker/   Cloudflare Worker API (Hono) + D1 database
 client/   React + Vite + Tailwind frontend
 ```
+
+In production, the Worker serves both the API (`/api/*`) and the built
+frontend (everything else, with client-side routing fallback), so the whole
+app lives behind one URL.
 
 ## Requirements
 
 - Node.js 18+
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up) (free tier is enough)
 
 ## Setup
 
@@ -41,73 +50,97 @@ npm run install:all
 ## Run in development
 
 ```bash
-# Set an admin password (defaults to "ChangeMe123!" if omitted)
-export ADMIN_PASSWORD=your-secure-password
-
 npm run dev
 ```
 
-This starts the API on `http://localhost:4000` and the frontend on
-`http://localhost:5173` (the frontend proxies `/api` requests to the backend).
-Open `http://localhost:5173` in your browser.
+This starts the Worker (via `wrangler dev`, using a local D1 emulation — no
+Cloudflare account needed for local dev) on `http://localhost:8787` and the
+frontend on `http://localhost:5173` (the frontend proxies `/api` requests to
+the Worker). Open `http://localhost:5173` in your browser.
 
-## Production build
+Local environment variables (`JWT_SECRET`, `ADMIN_PASSWORD`) go in
+`worker/.dev.vars` (gitignored):
 
-```bash
-npm run build      # builds client/dist
-ADMIN_PASSWORD=your-secure-password JWT_SECRET=a-long-random-string npm start
+```
+JWT_SECRET=any-local-dev-value
+ADMIN_PASSWORD=admin123
 ```
 
-`npm start` runs a single server on port 4000 (override with `PORT`) that
-serves both the API (`/api/*`) and the built frontend (everything else),
-so the whole app lives behind one URL — e.g. `https://yourapp.com/` for
-technicians and `https://yourapp.com/admin/login` for admins.
+The first time you run the app, apply the database schema locally:
 
-### Environment variables
+```bash
+npm run db:migrate:local
+```
 
-| Variable         | Description                                                        | Default                    |
-|------------------|----------------------------------------------------------------------|-----------------------------|
-| `ADMIN_PASSWORD` | Initial admin password (only used the first time the data file is created — change it from Admin → Settings afterward) | `ChangeMe123!` |
-| `JWT_SECRET`     | Secret used to sign login sessions. Set a long random value in production. | `dev-secret-change-in-production` |
-| `PORT`           | Server port                                                        | `4000`                      |
-| `DB_PATH`        | Path to the JSON data file. Point this at a persistent disk in production (see below) — otherwise data is lost on every redeploy/restart. | `server/data/db.json` |
+## Deploying to Cloudflare
 
-## Deploying to Render (recommended)
+1. **Log in to Cloudflare** (one-time):
+   ```bash
+   cd worker
+   npx wrangler login
+   ```
+2. **Create the D1 database:**
+   ```bash
+   npx wrangler d1 create refrigerant-log-mts
+   ```
+   This prints a `database_id` — copy it into `worker/wrangler.toml`,
+   replacing `REPLACE_WITH_YOUR_D1_DATABASE_ID`.
+3. **Apply the schema to the real database:**
+   ```bash
+   npm run db:migrate:remote
+   ```
+4. **Set secrets** (these are encrypted by Cloudflare, not stored in the repo):
+   ```bash
+   npx wrangler secret put JWT_SECRET
+   npx wrangler secret put ADMIN_PASSWORD
+   ```
+   Pick a long random value for `JWT_SECRET` and whatever you want the admin
+   login password to be for `ADMIN_PASSWORD`.
+5. **Deploy** (from the repo root):
+   ```bash
+   npm run deploy
+   ```
+   This builds the frontend and runs `wrangler deploy`.
 
-This repo includes a `render.yaml` blueprint that provisions everything
-needed as a single web service — one URL for both technicians and admin.
+Once deployed, Wrangler prints your live URL — something like
+`https://refrigerant-log-mts.<your-subdomain>.workers.dev`. Your links are:
 
-1. Push this repo to GitHub (already done if you're reading this from the repo).
-2. In the [Render dashboard](https://dashboard.render.com), click **New +** → **Blueprint**, and select this repository. Render will read `render.yaml` automatically.
-3. Render will prompt for the `ADMIN_PASSWORD` environment variable (it's marked `sync: false` in the blueprint so it isn't stored in the repo) — set it to whatever you want the admin password to be. `JWT_SECRET` is generated automatically.
-4. Deploy. Render builds the client, starts the server, and attaches a 1 GB persistent disk mounted at `/var/data` for `server/data/db.json` (via `DB_PATH`) so your team's data survives restarts and redeploys.
-5. Once live, your links are:
-   - **Technicians:** `https://<your-service>.onrender.com/technician/login` (or just the root URL — the landing page links to it)
-   - **Admin:** `https://<your-service>.onrender.com/admin/login`
+- **Technicians:** `<that URL>/technician/login` (or just the root — the
+  landing page links to it)
+- **Admin:** `<that URL>/admin/login`
 
-The blueprint uses Render's **Starter** plan — the free tier doesn't
-support persistent disks, so on free tier your data would be wiped on
-every restart. If you later add a custom domain in Render, the same
+To use a custom domain instead of the `workers.dev` subdomain, add a Route
+or Custom Domain to the Worker in the Cloudflare dashboard — the same
 `/technician/login` and `/admin/login` paths carry over.
 
-### Deploying elsewhere
+### Redeploying after changes
 
-The app is a single Node process (`npm start`) that serves both the API
-and the static frontend, so it runs on Railway, Fly.io, a plain VPS, or
-any Node host the same way: run `npm run install:all && npm run build`,
-then `npm start`, with `ADMIN_PASSWORD`, `JWT_SECRET`, and a `DB_PATH`
-pointed at persistent storage set as environment variables.
+Any time you change the app, just run `npm run deploy` again from the repo
+root. If you change `worker/migrations/`, also run
+`npm run db:migrate:remote` first.
+
+## Environment variables / secrets
+
+| Variable         | Where it's set                          | Description                                                        |
+|------------------|-------------------------------------------|----------------------------------------------------------------------|
+| `ADMIN_PASSWORD` | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Admin login password. Change it later from Admin → Settings in the app. |
+| `JWT_SECRET`     | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Secret used to sign login sessions. Use a long random value in production. |
 
 ## Data storage
 
-Data is stored in `server/data/db.json` (gitignored — it holds your team's
-real log data, not sample data). Back this file up regularly; there's no
-external database dependency, so a copy of this file is a full backup.
+Data lives in a Cloudflare D1 database (SQLite), configured in
+`worker/wrangler.toml` and defined by the schema in `worker/migrations/`.
+D1's free tier (5 GB storage, tens of millions of row reads/month) is far
+more than this app needs. To back up your data, run:
+
+```bash
+npx wrangler d1 export refrigerant-log-mts --remote --output backup.sql
+```
 
 ## EPA 608 notes
 
 The usage log captures the fields commonly required for refrigerant
 recordkeeping: date of service, technician, equipment/unit identifier,
 location, refrigerant type, service performed, and amount added vs.
-recovered. Export the CSV from the admin dashboard for audits or EPA
-recordkeeping requests.
+recovered. Export from the admin dashboard (CSV, clipboard, or email) for
+audits or EPA recordkeeping requests.
