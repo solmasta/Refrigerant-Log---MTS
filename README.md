@@ -109,15 +109,27 @@ Once deployed, Wrangler prints your live URL — something like
   landing page links to it)
 - **Admin:** `<that URL>/admin/login`
 
-To use a custom domain instead of the `workers.dev` subdomain, add a Route
-or Custom Domain to the Worker in the Cloudflare dashboard — the same
-`/technician/login` and `/admin/login` paths carry over.
+Steps 1–4 above are one-time setup. After that, you don't need to run
+`wrangler deploy` by hand again — see the next section.
 
-### Redeploying after changes
+## Automatic deploys (GitHub Actions)
 
-Any time you change the app, just run `npm run deploy` again from the repo
-root. If you change `worker/migrations/`, also run
-`npm run db:migrate:remote` first.
+`.github/workflows/deploy.yml` redeploys the app automatically on every push
+to `main` (build → apply any new D1 migrations → `wrangler deploy`). It also
+has a "Run workflow" button on the Actions tab for deploying on demand
+without pushing a commit.
+
+One-time setup, in the GitHub repo's **Settings → Secrets and variables →
+Actions**, add two repository secrets:
+
+| Secret | Where to find it |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → use the **Edit Cloudflare Workers** template. If the migration step in the workflow fails with a permissions error, edit the token to add **D1 → Edit** as well. |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → **Workers & Pages** → your Account ID is shown in the right sidebar. |
+
+This doesn't replace the one-time bootstrap above (D1 database creation and
+secrets still need to happen once via `wrangler`) — it just means you never
+need to run `npm run deploy` locally again after that.
 
 ## Environment variables / secrets
 
