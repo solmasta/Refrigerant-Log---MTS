@@ -20,9 +20,12 @@ or database to manage, and it's free at this app's scale.
   notes.
 - **Refrigerant purchasing log** — date, refrigerant type, quantity, cost,
   supplier, invoice number.
-- **Export** — CSV download, copy-to-clipboard, or a pre-filled email
-  template, available for the roster, usage logs, and purchases (with
-  optional filters by technician, refrigerant type, and date range).
+- **Export** — CSV download, copy-to-clipboard, or email, available for the
+  roster, usage logs, and purchases (with optional filters by technician,
+  refrigerant type, and date range). Emails send directly from the server
+  (via Resend, same as reminder emails) so long reports with lots of
+  technicians and entries arrive complete — not truncated the way a
+  `mailto:` link would cut them off.
 - **Monthly reminder emails** — every technician with an email on file
   automatically gets a reminder to log any outstanding entries before the
   month closes out. The day it fires (1st–31st, default the 28th) is
@@ -161,10 +164,12 @@ need to run `npm run deploy` locally again after that.
 | `RESEND_API_KEY` | `worker/.dev.vars` (local) / `wrangler secret put` (production) | Required for monthly reminder emails to actually send. See below. |
 | `APP_URL`        | `worker/wrangler.toml` `[vars]` (committed, not secret) | Your live URL, used to build the login link in reminder emails. Already set to your deployment; update if you add a custom domain. |
 
-### Setting up reminder emails
+### Setting up reminder emails and export emails
 
-Reminder emails are sent via [Resend](https://resend.com) (free tier: 100
-emails/day, 3,000/month — plenty for a small team).
+Reminder emails and the "Email" export option (Export Everything, roster,
+logs, purchases) both send via [Resend](https://resend.com) (free tier: 100
+emails/day, 3,000/month — plenty for a small team). Without `RESEND_API_KEY`
+set, both features return an error when used.
 
 1. Sign up at [resend.com](https://resend.com) and create an API key
    (Dashboard → API Keys → Create API Key).
