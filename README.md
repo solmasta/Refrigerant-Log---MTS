@@ -35,6 +35,10 @@ or database to manage, and it's free at this app's scale.
   filling out a log or purchase (basements, rural sites, etc.), the entry
   saves on the device and sends automatically once they're back online,
   with a visible "Pending sync" indicator until it does.
+- **Automated backups** — a full snapshot of the roster, usage logs, and
+  purchases is saved to Cloudflare R2 every day and kept for 90 days.
+  Admins can also trigger a backup on demand and download any snapshot
+  from Admin → Settings.
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure
@@ -101,14 +105,19 @@ npm run db:migrate:local
    ```bash
    npm run db:migrate:remote
    ```
-4. **Set secrets** (these are encrypted by Cloudflare, not stored in the repo):
+4. **Create the R2 bucket for automated backups:**
+   ```bash
+   npx wrangler r2 bucket create refrigerant-log-mts-backups
+   ```
+   The bucket name must match `bucket_name` in `worker/wrangler.toml`.
+5. **Set secrets** (these are encrypted by Cloudflare, not stored in the repo):
    ```bash
    npx wrangler secret put JWT_SECRET
    npx wrangler secret put ADMIN_PASSWORD
    ```
    Pick a long random value for `JWT_SECRET` and whatever you want the admin
    login password to be for `ADMIN_PASSWORD`.
-5. **Deploy** (from the repo root):
+6. **Deploy** (from the repo root):
    ```bash
    npm run deploy
    ```
@@ -121,7 +130,7 @@ Once deployed, Wrangler prints your live URL — something like
   landing page links to it)
 - **Admin:** `<that URL>/admin/login`
 
-Steps 1–4 above are one-time setup. After that, you don't need to run
+Steps 1–5 above are one-time setup. After that, you don't need to run
 `wrangler deploy` by hand again — see the next section.
 
 ## Automatic deploys (GitHub Actions)
@@ -233,7 +242,28 @@ fully closed state with no signal.
 Data lives in a Cloudflare D1 database (SQLite), configured in
 `worker/wrangler.toml` and defined by the schema in `worker/migrations/`.
 D1's free tier (5 GB storage, tens of millions of row reads/month) is far
-more than this app needs. To back up your data, run:
+more than this app needs.
+
+### Automated backups
+
+Every day, the same scheduled job that checks for reminder emails also
+takes a full JSON snapshot of the roster, usage logs, and purchases and
+saves it to a Cloudflare R2 bucket (`refrigerant-log-mts-backups`). R2's
+free tier (10 GB storage) comfortably covers years of daily snapshots at
+this app's scale. Backups older than 90 days are pruned automatically.
+
+From Admin → Settings → **Database backups**, you can trigger a backup
+immediately ("Back up now") and download any of the recent snapshots as a
+JSON file — useful before a risky change, or just for peace of mind.
+
+This requires the one-time `wrangler r2 bucket create
+refrigerant-log-mts-backups` step from deployment (see above) — without
+it, the daily backup will fail (logged, but won't block reminder emails)
+and the Backups card in Settings will show an error.
+
+### Manual export
+
+You can also export the raw SQLite database directly at any time:
 
 ```bash
 npx wrangler d1 export refrigerant-log-mts --remote --output backup.sql

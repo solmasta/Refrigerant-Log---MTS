@@ -5,7 +5,7 @@ import Roster from '../components/Roster.jsx';
 import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
 import ExportMenu from '../components/ExportMenu.jsx';
-import { api, exportUrl } from '../api.js';
+import { api, exportUrl, backupUrl } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
 import {
   buildCombinedCsv,
@@ -248,6 +248,7 @@ export default function AdminDashboard() {
         {tab === 'settings' && (
           <>
             <ReminderEmailsCard />
+            <BackupsCard />
             <AdminSettings />
           </>
         )}
@@ -449,6 +450,93 @@ function ReminderEmailsCard() {
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function BackupsCard() {
+  const [backups, setBackups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    api
+      .listBackups()
+      .then((d) => setBackups(d.backups))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function handleBackupNow() {
+    setCreating(true);
+    setError('');
+    try {
+      await api.createBackup();
+      refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const latest = backups[0];
+
+  return (
+    <div className="mt-6 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900">Database backups</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        A full snapshot of the roster, usage logs, and purchases is saved to Cloudflare R2
+        automatically every day and kept for 90 days.
+      </p>
+
+      <p className="mt-3 text-xs text-slate-500">
+        {loading
+          ? 'Loading…'
+          : latest
+            ? `Last backup: ${new Date(latest.uploaded).toLocaleString()}`
+            : 'No backups yet.'}
+      </p>
+
+      <button
+        onClick={handleBackupNow}
+        disabled={creating}
+        className="mt-4 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+      >
+        {creating ? 'Backing up…' : 'Back up now'}
+      </button>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {backups.length > 0 && (
+        <ul className="mt-4 max-h-48 divide-y divide-slate-100 overflow-y-auto text-sm">
+          {backups.map((b) => (
+            <li key={b.key} className="flex items-center justify-between gap-2 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-slate-800">{new Date(b.uploaded).toLocaleString()}</p>
+                <p className="text-xs text-slate-500">{formatBytes(b.size)}</p>
+              </div>
+              <a
+                href={backupUrl(b.key)}
+                className="shrink-0 text-xs font-medium text-sky-600 hover:text-sky-700"
+              >
+                Download
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

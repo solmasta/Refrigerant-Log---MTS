@@ -23,6 +23,7 @@ import {
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
 import { sendMonthlyReminders } from './email.js';
+import { createBackup, listBackups, getBackup, pruneOldBackups } from './backup.js';
 
 const app = new Hono();
 
@@ -343,12 +344,44 @@ app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
   return c.json(result);
 });
 
+// ---------- Database backups ----------
+
+app.get('/api/admin/backups', requireAdmin, async (c) => {
+  const backups = await listBackups(c.env);
+  return c.json({ backups });
+});
+
+app.post('/api/admin/backups', requireAdmin, async (c) => {
+  const backup = await createBackup(c.env);
+  return c.json({ backup }, 201);
+});
+
+app.get('/api/admin/backups/:filename', requireAdmin, async (c) => {
+  const object = await getBackup(c.env, c.req.param('filename'));
+  if (!object) return c.json({ error: 'Backup not found' }, 404);
+  return new Response(object.body, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="${c.req.param('filename')}"`,
+    },
+  });
+});
+
 function lastDayOfMonthUTC(date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
 }
 
 async function scheduled(event, env) {
   const now = new Date(event.scheduledTime);
+
+  try {
+    const backup = await createBackup(env);
+    const pruned = await pruneOldBackups(env);
+    console.log('Daily backup created:', JSON.stringify(backup), `pruned=${pruned}`);
+  } catch (err) {
+    console.error('Daily backup failed:', err);
+  }
+
   const reminderDay = await getReminderDay(env.DB);
   // If the configured day doesn't exist this month (e.g. 31 in a 30-day
   // month), fire on the actual last day instead of silently skipping.
