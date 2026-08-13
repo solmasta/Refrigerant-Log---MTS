@@ -15,10 +15,11 @@ database_id = "62b5a6e9-8fb8-446d-b384-d9956bb5b473"
 migrations_dir = "migrations"
 
 [triggers]
-# 9am UTC on the 28th of every month — reminds technicians to log entries
-# before the month closes out. Not "last day" because cron has no such
-# wildcard; the 28th exists in every month and leaves a few days' buffer.
-crons = ["0 9 28 * *"]
+# Fires daily at 9am UTC. The scheduled handler checks the admin-configured
+# reminder day (Admin -> Settings, default 28th) and only actually sends on
+# a match — cron has no "specific day, admin-configurable" wildcard, so the
+# day-matching logic lives in code instead of here.
+crons = ["0 9 * * *"]
 
 [vars]
 # Used to build the login link in reminder emails. Update if you set up a

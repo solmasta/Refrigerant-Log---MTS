@@ -24,9 +24,10 @@ or database to manage, and it's free at this app's scale.
   template, available for the roster, usage logs, and purchases (with
   optional filters by technician, refrigerant type, and date range).
 - **Monthly reminder emails** — every technician with an email on file
-  automatically gets a reminder on the 28th of each month to log any
-  outstanding entries before the month closes out. Admins can also send it
-  on demand from Admin → Settings.
+  automatically gets a reminder to log any outstanding entries before the
+  month closes out. The day it fires (1st–31st, default the 28th) is
+  configurable from Admin → Settings — in shorter months it fires on the
+  actual last day instead of skipping. Admins can also send it on demand.
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure

@@ -63,6 +63,9 @@ export const api = {
   deletePurchase: (id) => request(`/purchases/${id}`, { method: 'DELETE' }),
   adminSummary: () => request('/admin/summary'),
   sendReminders: () => request('/admin/send-reminders', { method: 'POST' }),
+  getReminderSettings: () => request('/admin/reminder-settings'),
+  updateReminderSettings: (reminderDay) =>
+    request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),
 };
 
 export function exportUrl(kind) {

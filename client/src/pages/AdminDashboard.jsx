@@ -318,15 +318,54 @@ function RecentActivity({ logs, purchases }) {
   );
 }
 
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function ReminderEmailsCard() {
+  const [reminderDay, setReminderDay] = useState(null);
+  const [dayLoading, setDayLoading] = useState(true);
+  const [dayInput, setDayInput] = useState(28);
+  const [savingDay, setSavingDay] = useState(false);
+  const [dayMessage, setDayMessage] = useState('');
+  const [dayError, setDayError] = useState('');
+
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    api
+      .getReminderSettings()
+      .then((d) => {
+        setReminderDay(d.reminderDay);
+        setDayInput(d.reminderDay);
+      })
+      .finally(() => setDayLoading(false));
+  }, []);
+
+  async function handleSaveDay() {
+    setSavingDay(true);
+    setDayError('');
+    setDayMessage('');
+    try {
+      const res = await api.updateReminderSettings(Number(dayInput));
+      setReminderDay(res.reminderDay);
+      setDayMessage('Saved.');
+      setTimeout(() => setDayMessage(''), 3000);
+    } catch (err) {
+      setDayError(err.message);
+    } finally {
+      setSavingDay(false);
+    }
+  }
+
   async function handleSend() {
     if (
       !confirm(
-        'Send a reminder email right now to every technician with an email on file? This is the same email that goes out automatically on the 28th of each month.'
+        `Send a reminder email right now to every technician with an email on file? This is the same email that goes out automatically on the ${reminderDay ? ordinal(reminderDay) : '28th'} of each month.`
       )
     )
       return;
@@ -347,9 +386,38 @@ function ReminderEmailsCard() {
     <div className="mt-6 max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900">Monthly reminder emails</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Every technician with an email on file automatically gets a reminder on the 28th of each
-        month to log any outstanding entries. Use this to send it manually, e.g. to test it.
+        Every technician with an email on file automatically gets a reminder on the{' '}
+        {dayLoading ? '…' : ordinal(reminderDay)} of each month to log any outstanding entries. In
+        shorter months, it fires on the last real day instead of skipping.
       </p>
+
+      <div className="mt-4 flex items-end gap-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-600">Reminder day</span>
+          <select
+            value={dayInput}
+            onChange={(e) => setDayInput(e.target.value)}
+            disabled={dayLoading}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-50"
+          >
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {ordinal(d)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          onClick={handleSaveDay}
+          disabled={savingDay || dayLoading || Number(dayInput) === reminderDay}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {savingDay ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+      {dayMessage && <p className="mt-1 text-xs text-emerald-600">{dayMessage}</p>}
+      {dayError && <p className="mt-1 text-xs text-red-600">{dayError}</p>}
+
       <button
         onClick={handleSend}
         disabled={sending}
