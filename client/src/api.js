@@ -95,8 +95,6 @@ export const api = {
     request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),
   listBackups: () => request('/admin/backups'),
   createBackup: () => request('/admin/backups', { method: 'POST' }),
-  sendExportEmail: (to, subject, body) =>
-    request('/admin/send-export-email', { method: 'POST', body: { to, subject, body } }),
 };
 
 export function exportUrl(kind) {
