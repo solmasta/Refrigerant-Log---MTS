@@ -2,7 +2,17 @@ function hasValue(v) {
   return v !== null && v !== undefined && v !== '';
 }
 
-function PendingBadge() {
+function PendingBadge({ error }) {
+  if (error) {
+    return (
+      <span
+        title={error}
+        className="ml-2 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
+      >
+        Sync issue
+      </span>
+    );
+  }
   return (
     <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
       Pending sync
@@ -40,7 +50,7 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
             <tr key={log.id} className={`hover:bg-slate-50 ${log.pending ? 'bg-amber-50/60' : ''}`}>
               <Td className="whitespace-nowrap">
                 {log.date}
-                {log.pending && <PendingBadge />}
+                {log.pending && <PendingBadge error={log.syncError} />}
               </Td>
               {showTechnician && <Td className="whitespace-nowrap">{log.technicianName}</Td>}
               <Td>

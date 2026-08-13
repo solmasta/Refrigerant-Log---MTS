@@ -24,6 +24,7 @@ export default function PurchaseForm({ onSaved }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
+  const [queueFailed, setQueueFailed] = useState(false);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -35,6 +36,7 @@ export default function PurchaseForm({ onSaved }) {
     setError('');
     setSuccess(false);
     setSavedOffline(false);
+    setQueueFailed(false);
     try {
       await api.createPurchase(form);
       setForm({ ...emptyForm, date: todayIso() });
@@ -43,10 +45,14 @@ export default function PurchaseForm({ onSaved }) {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       if (err.isNetworkError) {
-        await queueEntry('purchase', form);
-        setForm({ ...emptyForm, date: todayIso() });
-        setSavedOffline(true);
-        onSaved?.();
+        try {
+          await queueEntry('purchase', form);
+          setForm({ ...emptyForm, date: todayIso() });
+          setSavedOffline(true);
+          onSaved?.();
+        } catch {
+          setQueueFailed(true);
+        }
       } else {
         setError(err.message);
       }
@@ -153,6 +159,14 @@ export default function PurchaseForm({ onSaved }) {
         <p className="text-sm text-amber-600">
           No connection right now — this entry is saved on your device and will send
           automatically once you're back online.
+        </p>
+      )}
+      {queueFailed && (
+        <p className="text-sm font-medium text-red-600">
+          Couldn't save this entry — no connection, and this device also couldn't store it for
+          later (this can happen in private/incognito browsing). Don't close this page. Please
+          take a screenshot or write down these details as a backup, then try Save again once
+          you have a connection.
         </p>
       )}
 
