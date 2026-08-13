@@ -8,6 +8,8 @@ import ExportMenu from '../components/ExportMenu.jsx';
 import { api, exportUrl } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
 import {
+  buildCombinedCsv,
+  buildCombinedReport,
   buildLogsReport,
   buildPurchasesReport,
   buildRosterCsv,
@@ -64,14 +66,40 @@ export default function AdminDashboard() {
     refresh();
   }
 
+  // Always pulls fresh, unfiltered data — independent of whatever filters
+  // happen to be set on the Logs/Purchases tabs — so "everything" really is.
+  async function fetchAllData() {
+    const [techData, logData, purchaseData] = await Promise.all([
+      api.technicians(),
+      api.listLogs({}),
+      api.listPurchases({}),
+    ]);
+    return { technicians: techData.technicians, logs: logData.logs, purchases: purchaseData.purchases };
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Team roster, refrigerant usage, purchases, and EPA-ready exports.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Team roster, refrigerant usage, purchases, and EPA-ready exports.
+            </p>
+          </div>
+          <ExportMenu
+            label="Export Everything"
+            buildCsv={async () => {
+              const { technicians: t, logs: l, purchases: p } = await fetchAllData();
+              return buildCombinedCsv(t, l, p);
+            }}
+            buildReport={async () => {
+              const { technicians: t, logs: l, purchases: p } = await fetchAllData();
+              return buildCombinedReport(t, l, p);
+            }}
+          />
+        </div>
 
         <div className="mt-6 flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1">
           {TABS.map((t) => (

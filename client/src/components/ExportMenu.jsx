@@ -3,9 +3,9 @@ import EmailTemplateModal from './EmailTemplateModal.jsx';
 import { copyText } from '../utils/clipboard.js';
 import { downloadTextFile } from '../utils/download.js';
 
-export default function ExportMenu({ csvHref, buildCsv, buildReport }) {
+export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Export' }) {
   const [open, setOpen] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
+  const [emailReport, setEmailReport] = useState(null);
   const [toast, setToast] = useState('');
   const menuRef = useRef(null);
 
@@ -20,24 +20,23 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport }) {
 
   async function handleCopy() {
     setOpen(false);
-    const { tsv } = buildReport();
+    const { tsv } = await buildReport();
     const ok = await copyText(tsv);
     setToast(ok ? 'Copied — paste into Excel, Sheets, or an email' : 'Could not copy automatically');
     setTimeout(() => setToast(''), 3000);
   }
 
-  function handleEmail() {
+  async function handleEmail() {
     setOpen(false);
-    setShowEmail(true);
+    const report = await buildReport();
+    setEmailReport(report);
   }
 
-  function handleCsvDownload() {
+  async function handleCsvDownload() {
     setOpen(false);
-    const { filename, csv } = buildCsv();
+    const { filename, csv } = await buildCsv();
     downloadTextFile(filename, csv);
   }
-
-  const report = showEmail ? buildReport() : null;
 
   return (
     <div className="relative" ref={menuRef}>
@@ -45,7 +44,7 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport }) {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
       >
-        Export
+        {label}
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
           <path
             fillRule="evenodd"
@@ -98,11 +97,11 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport }) {
         </div>
       )}
 
-      {showEmail && report && (
+      {emailReport && (
         <EmailTemplateModal
-          subject={report.subject}
-          body={report.body}
-          onClose={() => setShowEmail(false)}
+          subject={emailReport.subject}
+          body={emailReport.body}
+          onClose={() => setEmailReport(null)}
         />
       )}
     </div>

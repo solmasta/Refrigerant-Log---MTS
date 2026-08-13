@@ -22,14 +22,18 @@ const ROSTER_COLUMNS = [
   { key: 'lastEntry', label: 'Last Entry' },
 ];
 
-export function buildRosterReport(technicians) {
-  const rows = technicians.map((t) => ({
+function rosterRows(technicians) {
+  return technicians.map((t) => ({
     name: `${t.firstName} ${t.lastName}`,
     onboarded: new Date(t.createdAt).toLocaleDateString(),
     logCount: t.logCount,
     purchaseCount: t.purchaseCount,
     lastEntry: t.lastEntryAt ? new Date(t.lastEntryAt).toLocaleString() : 'No entries yet',
   }));
+}
+
+export function buildRosterReport(technicians) {
+  const rows = rosterRows(technicians);
 
   const subject = `MTS Refrigerant Log — Technician Roster (${todayLabel()})`;
   const body = [
@@ -45,13 +49,7 @@ export function buildRosterReport(technicians) {
 }
 
 export function buildRosterCsv(technicians) {
-  const rows = technicians.map((t) => ({
-    name: `${t.firstName} ${t.lastName}`,
-    onboarded: new Date(t.createdAt).toLocaleDateString(),
-    logCount: t.logCount,
-    purchaseCount: t.purchaseCount,
-    lastEntry: t.lastEntryAt ? new Date(t.lastEntryAt).toLocaleString() : 'No entries yet',
-  }));
+  const rows = rosterRows(technicians);
   return {
     filename: `technician_roster_${new Date().toISOString().slice(0, 10)}.csv`,
     csv: toCsv(rows, ROSTER_COLUMNS),
@@ -130,4 +128,109 @@ export function buildPurchasesReport(purchases, filters, technicians) {
   ].join('\n');
 
   return { subject, body, tsv: toTsv(rows, PURCHASE_COLUMNS) };
+}
+
+// Raw (unformatted) column sets used for CSV/spreadsheet export, matching
+// the backend's /api/export/*.csv column layout exactly.
+const LOG_CSV_COLUMNS = [
+  { key: 'date', label: 'Date' },
+  { key: 'technicianName', label: 'Technician' },
+  { key: 'equipmentId', label: 'Equipment ID' },
+  { key: 'location', label: 'Location' },
+  { key: 'refrigerantType', label: 'Refrigerant Type' },
+  { key: 'serviceType', label: 'Service Type' },
+  { key: 'amountAdded', label: 'Amount Added' },
+  { key: 'amountRecovered', label: 'Amount Recovered' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'createdAt', label: 'Submitted At' },
+];
+
+const PURCHASE_CSV_COLUMNS = [
+  { key: 'date', label: 'Date' },
+  { key: 'technicianName', label: 'Purchased By' },
+  { key: 'refrigerantType', label: 'Refrigerant Type' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'cost', label: 'Cost' },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'invoiceNumber', label: 'Invoice #' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'createdAt', label: 'Submitted At' },
+];
+
+export function buildCombinedCsv(technicians, logs, purchases) {
+  const csv = [
+    '=== TECHNICIAN ROSTER ===',
+    toCsv(rosterRows(technicians), ROSTER_COLUMNS),
+    '',
+    '=== USAGE LOGS ===',
+    toCsv(logs, LOG_CSV_COLUMNS),
+    '',
+    '=== PURCHASES ===',
+    toCsv(purchases, PURCHASE_CSV_COLUMNS),
+  ].join('\r\n');
+
+  return {
+    filename: `refrigerant_log_full_export_${new Date().toISOString().slice(0, 10)}.csv`,
+    csv,
+  };
+}
+
+export function buildCombinedReport(technicians, logs, purchases) {
+  const logRows = logs.map((l) => ({
+    date: l.date,
+    technicianName: l.technicianName,
+    equipmentId: l.equipmentId,
+    refrigerantType: l.refrigerantType,
+    serviceType: l.serviceType,
+    amountAdded: l.amountAdded != null ? `${l.amountAdded} ${l.unit}` : '—',
+    amountRecovered: l.amountRecovered != null ? `${l.amountRecovered} ${l.unit}` : '—',
+  }));
+  const purchaseRows = purchases.map((p) => ({
+    date: p.date,
+    technicianName: p.technicianName,
+    refrigerantType: p.refrigerantType,
+    quantity: `${p.quantity} ${p.unit}`,
+    cost: p.cost != null ? `$${p.cost.toFixed(2)}` : '—',
+    supplier: p.supplier || '—',
+  }));
+  const techRows = rosterRows(technicians);
+
+  const totalAdded = logs.reduce((sum, l) => sum + (l.amountAdded || 0), 0);
+  const totalRecovered = logs.reduce((sum, l) => sum + (l.amountRecovered || 0), 0);
+  const totalQty = purchases.reduce((sum, p) => sum + (p.quantity || 0), 0);
+  const totalCost = purchases.reduce((sum, p) => sum + (p.cost || 0), 0);
+
+  const subject = `MTS Refrigerant Log — Full Export (${todayLabel()})`;
+  const body = [
+    'Refrigerant Log — Full Export — MTS',
+    `Generated ${todayLabel()}`,
+    '(All technicians, all entries, no filters applied)',
+    '',
+    '── TECHNICIAN ROSTER ──',
+    toReadableTable(techRows, ROSTER_COLUMNS),
+    `${technicians.length} technicians`,
+    '',
+    '── USAGE LOGS ──',
+    toReadableTable(logRows, LOG_COLUMNS),
+    `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
+    '',
+    '── PURCHASES ──',
+    toReadableTable(purchaseRows, PURCHASE_COLUMNS),
+    `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
+  ].join('\n');
+
+  const tsv = [
+    'TECHNICIAN ROSTER',
+    toTsv(techRows, ROSTER_COLUMNS),
+    '',
+    'USAGE LOGS',
+    toTsv(logRows, LOG_COLUMNS),
+    '',
+    'PURCHASES',
+    toTsv(purchaseRows, PURCHASE_COLUMNS),
+  ].join('\n');
+
+  return { subject, body, tsv };
 }
