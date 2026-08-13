@@ -4,10 +4,12 @@
   "description": "Digital refrigerant tracking log for EPA 608 compliance",
   "private": true,
   "scripts": {
-    "install:all": "npm install --prefix server && npm install --prefix client",
-    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install:all": "npm install --prefix worker && npm install --prefix client",
+    "dev": "concurrently -n worker,client -c blue,green \"npm run dev --prefix worker\" \"npm run dev --prefix client\"",
     "build": "npm run build --prefix client",
-    "start": "npm run start --prefix server"
+    "deploy": "npm run build && npm run deploy --prefix worker",
+    "db:migrate:local": "npm run db:migrate:local --prefix worker",
+    "db:migrate:remote": "npm run db:migrate:remote --prefix worker"
   },
   "repository": {
     "type": "git",
