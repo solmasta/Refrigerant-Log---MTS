@@ -14,11 +14,16 @@ database_name = "refrigerant-log-mts"
 database_id = "62b5a6e9-8fb8-446d-b384-d9956bb5b473"
 migrations_dir = "migrations"
 
+[[r2_buckets]]
+binding = "BACKUPS"
+bucket_name = "refrigerant-log-mts-backups"
+
 [triggers]
-# Fires daily at 9am UTC. The scheduled handler checks the admin-configured
-# reminder day (Admin -> Settings, default 28th) and only actually sends on
-# a match — cron has no "specific day, admin-configurable" wildcard, so the
-# day-matching logic lives in code instead of here.
+# Fires daily at 9am UTC. The scheduled handler always runs a database
+# backup to R2, and separately checks the admin-configured reminder day
+# (Admin -> Settings, default 28th), only actually sending reminder emails
+# on a match — cron has no "specific day, admin-configurable" wildcard, so
+# that day-matching logic lives in code instead of here.
 crons = ["0 9 * * *"]
 
 [vars]

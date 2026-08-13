@@ -93,9 +93,16 @@ export const api = {
   getReminderSettings: () => request('/admin/reminder-settings'),
   updateReminderSettings: (reminderDay) =>
     request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),
+  listBackups: () => request('/admin/backups'),
+  createBackup: () => request('/admin/backups', { method: 'POST' }),
 };
 
 export function exportUrl(kind) {
   const token = getToken();
   return `/api/export/${kind}.csv?token=${encodeURIComponent(token || '')}`;
+}
+
+export function backupUrl(filename) {
+  const token = getToken();
+  return `/api/admin/backups/${encodeURIComponent(filename)}?token=${encodeURIComponent(token || '')}`;
 }
