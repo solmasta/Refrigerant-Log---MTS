@@ -35,12 +35,12 @@ export default function TechnicianDashboard() {
           Record refrigerant usage and purchases. Entries are saved to the shared team log.
         </p>
 
-        <div className="mt-6 flex gap-1 rounded-lg bg-slate-200/60 p-1">
+        <div className="mt-6 flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1 sm:grid sm:grid-cols-3">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition sm:shrink ${
                 tab === t.id
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'

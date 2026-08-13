@@ -24,11 +24,14 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-900 px-4">
+      <Link
+        to="/"
+        className="absolute left-4 top-4 text-sm text-slate-400 hover:text-slate-200 sm:left-6 sm:top-6"
+      >
+        &larr; Back
+      </Link>
       <div className="w-full max-w-sm">
-        <Link to="/" className="mb-6 inline-block text-sm text-slate-400 hover:text-slate-200">
-          &larr; Back
-        </Link>
         <div className="rounded-2xl border border-slate-700 bg-slate-800 p-8 shadow-xl">
           <h1 className="text-xl font-semibold text-white">Admin Sign In</h1>
           <p className="mt-1 text-sm text-slate-400">

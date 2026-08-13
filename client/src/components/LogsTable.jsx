@@ -40,8 +40,8 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
               <Td className="text-right whitespace-nowrap">
                 {log.amountRecovered != null ? `${log.amountRecovered} ${log.unit}` : '—'}
               </Td>
-              <Td className="max-w-xs truncate text-slate-500" title={log.notes}>
-                {log.notes || '—'}
+              <Td className="max-w-xs text-slate-500">
+                <span className="line-clamp-2 whitespace-normal">{log.notes || '—'}</span>
               </Td>
               {onDelete && (
                 <Td>
