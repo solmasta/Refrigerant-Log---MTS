@@ -28,6 +28,9 @@ or database to manage, and it's free at this app's scale.
   month closes out. The day it fires (1st–31st, default the 28th) is
   configurable from Admin → Settings — in shorter months it fires on the
   actual last day instead of skipping. Admins can also send it on demand.
+- **Installable as an app (PWA)** — technicians and admins can add it to
+  their phone's home screen with its own icon, so it opens like a native
+  app instead of a browser tab. See "Installing on a phone" below.
 - **Modern, responsive UI** — works on phones and tablets in the field.
 
 ## Project structure
@@ -168,6 +171,21 @@ emails/day, 3,000/month — plenty for a small team).
 
 Test it anytime from Admin → Settings → **Send reminder emails now**, without
 waiting for the 28th.
+
+## Installing on a phone
+
+The app is a PWA (installable web app) — no app store needed.
+
+- **Android (Chrome):** open the site, tap the **⋮** menu → **Add to Home
+  screen** / **Install app**. Chrome may also show an install banner
+  automatically.
+- **iPhone/iPad (Safari):** open the site, tap the **Share** icon → **Add to
+  Home Screen**. (Push-style install prompts don't exist on iOS Safari —
+  this manual step is how every PWA gets installed there.)
+
+Either way, it adds a home screen icon that opens the app full-screen, no
+browser address bar. It's the same live site, not a separate download —
+signing in and all data work exactly the same.
 
 ## Data storage
 
