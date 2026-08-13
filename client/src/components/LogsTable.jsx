@@ -31,6 +31,9 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
               <Td>
                 <div className="font-medium text-slate-900">{log.equipmentId}</div>
                 {log.location && <div className="text-xs text-slate-500">{log.location}</div>}
+                {log.workOrderNumber && (
+                  <div className="text-xs text-slate-500">WO# {log.workOrderNumber}</div>
+                )}
               </Td>
               <Td className="whitespace-nowrap">{log.refrigerantType}</Td>
               <Td className="whitespace-nowrap">{log.serviceType}</Td>

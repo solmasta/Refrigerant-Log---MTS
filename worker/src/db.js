@@ -22,6 +22,7 @@ function rowToLog(row) {
     date: row.date,
     equipmentId: row.equipment_id,
     location: row.location,
+    workOrderNumber: row.work_order_number,
     refrigerantType: row.refrigerant_type,
     serviceType: row.service_type,
     amountAdded: row.amount_added,
@@ -151,9 +152,9 @@ export async function insertLog(db, entry) {
   await db
     .prepare(
       `INSERT INTO logs
-        (id, technician_id, technician_name, date, equipment_id, location, refrigerant_type,
-         service_type, amount_added, amount_recovered, unit, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (id, technician_id, technician_name, date, equipment_id, location, work_order_number,
+         refrigerant_type, service_type, amount_added, amount_recovered, unit, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       entry.id,
@@ -162,6 +163,7 @@ export async function insertLog(db, entry) {
       entry.date,
       entry.equipmentId,
       entry.location,
+      entry.workOrderNumber,
       entry.refrigerantType,
       entry.serviceType,
       entry.amountAdded,
