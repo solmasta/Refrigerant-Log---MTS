@@ -1,0 +1,1 @@
+ALTER TABLE logs ADD COLUMN work_order_number TEXT NOT NULL DEFAULT '';

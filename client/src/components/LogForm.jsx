@@ -8,6 +8,7 @@ const emptyForm = {
   date: todayIso(),
   equipmentId: '',
   location: '',
+  workOrderNumber: '',
   refrigerantType: '',
   serviceType: '',
   amountAdded: '',
@@ -68,14 +69,24 @@ export default function LogForm({ onSaved }) {
         </Field>
       </div>
 
-      <Field label="Location / Site">
-        <input
-          value={form.location}
-          onChange={update('location')}
-          placeholder="123 Main St - Rooftop"
-          className={inputClass}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Location / Site">
+          <input
+            value={form.location}
+            onChange={update('location')}
+            placeholder="123 Main St - Rooftop"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Work order #">
+          <input
+            value={form.workOrderNumber}
+            onChange={update('workOrderNumber')}
+            placeholder="WO-10293"
+            className={inputClass}
+          />
+        </Field>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Refrigerant type">
