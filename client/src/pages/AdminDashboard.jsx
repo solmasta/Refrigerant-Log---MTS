@@ -4,8 +4,15 @@ import StatCard from '../components/StatCard.jsx';
 import Roster from '../components/Roster.jsx';
 import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
+import ExportMenu from '../components/ExportMenu.jsx';
 import { api, exportUrl } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
+import {
+  buildLogsReport,
+  buildPurchasesReport,
+  buildRosterCsv,
+  buildRosterReport,
+} from '../utils/reportBuilders.js';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -149,12 +156,16 @@ export default function AdminDashboard() {
                 className={filterInput}
               />
             </FilterField>
-            <a
-              href={exportUrl(tab === 'logs' ? 'logs' : 'purchases')}
-              className="ml-auto rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              Export CSV
-            </a>
+            <div className="ml-auto">
+              <ExportMenu
+                csvHref={exportUrl(tab === 'logs' ? 'logs' : 'purchases')}
+                buildReport={() =>
+                  tab === 'logs'
+                    ? buildLogsReport(logs, filters, technicians)
+                    : buildPurchasesReport(purchases, filters, technicians)
+                }
+              />
+            </div>
           </div>
         )}
 
@@ -172,6 +183,12 @@ export default function AdminDashboard() {
 
         {tab === 'roster' && (
           <div className="mt-6">
+            <div className="mb-3 flex justify-end">
+              <ExportMenu
+                buildCsv={() => buildRosterCsv(technicians)}
+                buildReport={() => buildRosterReport(technicians)}
+              />
+            </div>
             <Roster technicians={technicians} />
           </div>
         )}
