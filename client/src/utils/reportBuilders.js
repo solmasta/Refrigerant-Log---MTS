@@ -1,4 +1,4 @@
-import { toCsv, toReadableTable, toTsv } from './textTable.js';
+import { toCsv, toEntryList, toTsv } from './textTable.js';
 
 const todayLabel = () => new Date().toLocaleDateString();
 
@@ -14,18 +14,10 @@ function describeFilters(filters, technicians) {
   return parts.length ? `Filters: ${parts.join(' · ')}` : 'Filters: none (showing all entries)';
 }
 
-// Notes are free text and can run long, so they're kept out of the
-// column-aligned table (one long note would force every row's column that
-// wide) and listed in full underneath instead, tied back to the entry via
-// its heading line.
-function notesSection(title, entries, headingFn) {
-  const withNotes = entries.filter((e) => e.notes && e.notes.trim());
-  if (!withNotes.length) return [];
-  return [
-    '',
-    `${title}:`,
-    ...withNotes.flatMap((e) => [`- ${headingFn(e)}`, `  ${e.notes.trim()}`]),
-  ];
+// Joins non-empty parts with " · ", dropping the "—" placeholder rows use
+// for missing optional fields so blank fields don't show up as bare labels.
+function joinParts(parts) {
+  return parts.filter((p) => p[1] && p[1] !== '—').map(([label, value]) => `${label}: ${value}`).join(' · ');
 }
 
 const ROSTER_COLUMNS = [
@@ -48,6 +40,18 @@ function rosterRows(technicians) {
   }));
 }
 
+// Each report body renders one short, self-labeled block per row (see
+// toEntryList) rather than a padded/aligned table, so it stays readable in
+// plain-text email clients -- which almost always show plain text in a
+// proportional font, not monospace -- and wraps cleanly on a phone screen.
+function rosterEntryList(rows) {
+  return toEntryList(rows, [
+    (r) => `${r.name}${r.email ? ` <${r.email}>` : ''}`,
+    (r) => `Onboarded ${r.onboarded} · ${r.logCount} log${r.logCount === 1 ? '' : 's'} · ${r.purchaseCount} purchase${r.purchaseCount === 1 ? '' : 's'}`,
+    (r) => `Last entry: ${r.lastEntry}`,
+  ]);
+}
+
 export function buildRosterReport(technicians) {
   const rows = rosterRows(technicians);
 
@@ -56,7 +60,7 @@ export function buildRosterReport(technicians) {
     'Technician Roster — Refrigerant Log MTS',
     `Generated ${todayLabel()}`,
     '',
-    toReadableTable(rows, ROSTER_COLUMNS),
+    rosterEntryList(rows),
     '',
     `Total technicians: ${technicians.length}`,
   ].join('\n');
@@ -72,8 +76,8 @@ export function buildRosterCsv(technicians) {
   };
 }
 
-// Table columns shown in the aligned email/report view (notes excluded --
-// see notesSection). TSV (copy-to-clipboard) gets every field, matching CSV.
+// TSV (copy-to-clipboard/paste-into-spreadsheet) columns get every field,
+// matching CSV.
 const LOG_COLUMNS = [
   { key: 'date', label: 'Date' },
   { key: 'technicianName', label: 'Technician' },
@@ -102,12 +106,13 @@ function logRows(logs) {
   }));
 }
 
-function logNotesSection(logs) {
-  return notesSection(
-    'Notes',
-    logs,
-    (l) => `${l.date} · ${l.technicianName} · ${l.equipmentId}`
-  );
+function logEntryList(rows) {
+  return toEntryList(rows, [
+    (r) => `${r.date} — ${r.technicianName} — ${r.equipmentId}`,
+    (r) => joinParts([['Location', r.location], ['WO#', r.workOrderNumber]]) || null,
+    (r) => `${r.refrigerantType} · ${r.serviceType} · Added ${r.amountAdded} · Recovered ${r.amountRecovered}`,
+    (r) => (r.notes && r.notes.trim() ? `Notes: ${r.notes.trim()}` : null),
+  ]);
 }
 
 export function buildLogsReport(logs, filters, technicians) {
@@ -122,10 +127,9 @@ export function buildLogsReport(logs, filters, technicians) {
     `Generated ${todayLabel()}`,
     describeFilters(filters, technicians),
     '',
-    toReadableTable(rows, LOG_COLUMNS),
+    logEntryList(rows),
     '',
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
-    ...logNotesSection(logs),
   ].join('\n');
 
   return { subject, body, tsv: toTsv(rows, LOG_TSV_COLUMNS) };
@@ -155,12 +159,13 @@ function purchaseRows(purchases) {
   }));
 }
 
-function purchaseNotesSection(purchases) {
-  return notesSection(
-    'Notes',
-    purchases,
-    (p) => `${p.date} · ${p.technicianName} · ${p.refrigerantType}`
-  );
+function purchaseEntryList(rows) {
+  return toEntryList(rows, [
+    (r) => `${r.date} — ${r.technicianName}`,
+    (r) => `${r.refrigerantType} · ${r.quantity} · ${r.cost}`,
+    (r) => joinParts([['Supplier', r.supplier], ['Invoice #', r.invoiceNumber]]) || null,
+    (r) => (r.notes && r.notes.trim() ? `Notes: ${r.notes.trim()}` : null),
+  ]);
 }
 
 export function buildPurchasesReport(purchases, filters, technicians) {
@@ -175,10 +180,9 @@ export function buildPurchasesReport(purchases, filters, technicians) {
     `Generated ${todayLabel()}`,
     describeFilters(filters, technicians),
     '',
-    toReadableTable(rows, PURCHASE_COLUMNS),
+    purchaseEntryList(rows),
     '',
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
-    ...purchaseNotesSection(purchases),
   ].join('\n');
 
   return { subject, body, tsv: toTsv(rows, PURCHASE_TSV_COLUMNS) };
@@ -249,18 +253,16 @@ export function buildCombinedReport(technicians, logs, purchases) {
     '(All technicians, all entries, no filters applied)',
     '',
     '── TECHNICIAN ROSTER ──',
-    toReadableTable(techRows, ROSTER_COLUMNS),
+    rosterEntryList(techRows),
     `${technicians.length} technicians`,
     '',
     '── USAGE LOGS ──',
-    toReadableTable(logR, LOG_COLUMNS),
+    logEntryList(logR),
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
-    ...logNotesSection(logs),
     '',
     '── PURCHASES ──',
-    toReadableTable(purchaseR, PURCHASE_COLUMNS),
+    purchaseEntryList(purchaseR),
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
-    ...purchaseNotesSection(purchases),
   ].join('\n');
 
   const tsv = [
