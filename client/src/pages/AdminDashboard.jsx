@@ -118,23 +118,20 @@ export default function AdminDashboard() {
           />
         </div>
 
-        <div className="relative mt-6">
-          <div className="flex gap-1 overflow-x-auto rounded-lg bg-slate-200/60 p-1">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition ${
-                  tab === t.id
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-lg bg-gradient-to-l from-slate-200/90 to-transparent sm:hidden" />
+        <div className="mt-6 grid grid-cols-5 gap-1.5 rounded-lg bg-slate-200/60 p-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-md px-0.5 py-2 text-center text-[11px] font-medium leading-tight transition sm:px-4 sm:text-sm ${
+                tab === t.id
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {tab === 'overview' && summary && (
