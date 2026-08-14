@@ -3,7 +3,7 @@ import EmailTemplateModal from './EmailTemplateModal.jsx';
 import { copyText } from '../utils/clipboard.js';
 import { downloadTextFile } from '../utils/download.js';
 
-export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Export' }) {
+export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Export', className = '' }) {
   const [open, setOpen] = useState(false);
   const [emailReport, setEmailReport] = useState(null);
   const [toast, setToast] = useState('');
@@ -39,7 +39,7 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Ex
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className={`relative ${className}`} ref={menuRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
