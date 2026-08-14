@@ -77,19 +77,17 @@ export default function EmailTemplateModal({ subject, body, getCsvFile, onClose 
   return (
     <Modal title="Email template" onClose={onClose}>
       <div className="space-y-4">
-        {!canWebShare && (
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">To (optional)</span>
-            <input
-              type="email"
-              multiple
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="supervisor@company.com"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-            />
-          </label>
-        )}
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">To (optional)</span>
+          <input
+            type="email"
+            multiple
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            placeholder="supervisor@company.com"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
 
         <div>
           <div className="mb-1 flex items-center justify-between">
@@ -126,30 +124,30 @@ export default function EmailTemplateModal({ subject, body, getCsvFile, onClose 
           />
         </div>
 
-        {!canWebShare && tooLongForMailto && (
+        {tooLongForMailto && (
           <p className="text-xs text-amber-600">
-            This report is long, so some email apps may cut off the body when opened directly.
-            Copy the text above and paste it into a new email to be safe, or use Download CSV
-            from the export menu instead.
+            This report is long, so "Open in email app" below may cut off the body.
+            {canWebShare
+              ? ' Use Share below instead — it attaches the full report as a CSV file — or copy the text above and paste it into a new email.'
+              : ' Copy the text above and paste it into a new email to be safe, or use Download CSV from the export menu instead.'}
           </p>
         )}
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          {canWebShare ? (
+          <a
+            href={mailtoHref}
+            className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
+          >
+            Open in email app
+          </a>
+          {canWebShare && (
             <button
               onClick={handleShare}
               disabled={sharing}
-              className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:opacity-60"
+              className="flex-1 rounded-lg border border-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:opacity-60"
             >
-              {sharing ? 'Opening…' : 'Share / Open in Mail'}
+              {sharing ? 'Opening…' : 'Share…'}
             </button>
-          ) : (
-            <a
-              href={mailtoHref}
-              className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-            >
-              Open in email app
-            </a>
           )}
           <button
             onClick={onClose}
@@ -159,6 +157,12 @@ export default function EmailTemplateModal({ subject, body, getCsvFile, onClose 
           </button>
         </div>
         {shareError && <p className="text-sm text-red-600">{shareError}</p>}
+        {canWebShare && (
+          <p className="text-xs text-slate-500">
+            "Open in email app" launches Mail/Gmail directly. "Share…" opens your device's share
+            sheet, which can attach the CSV file or send via another app.
+          </p>
+        )}
       </div>
     </Modal>
   );

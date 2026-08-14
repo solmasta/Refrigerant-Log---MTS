@@ -1,9 +1,3 @@
-function pad(value, width) {
-  const str = String(value ?? '—');
-  if (str.length >= width) return str.slice(0, Math.max(width - 1, 1)) + '…';
-  return str + ' '.repeat(width - str.length);
-}
-
 export function toTsv(rows, columns) {
   const header = columns.map((c) => c.label).join('\t');
   const lines = rows.map((row) =>
@@ -24,13 +18,26 @@ export function toCsv(rows, columns) {
   return [header, ...lines].join('\r\n');
 }
 
-export function toReadableTable(rows, columns) {
+// Renders each row as a short, self-labeled block ("1. ...", indented
+// follow-up lines) instead of a padded/aligned table. Plain-text emails are
+// almost always shown in a proportional font (Gmail, Apple Mail, Outlook all
+// do this), so a table built with space-padding lines up only in a
+// monospace font -- in the actual email it reads as ragged, misaligned
+// columns. Self-labeled lines stay readable regardless of font, and wrap
+// gracefully on a phone-width screen instead of forcing a wide table to
+// reflow mid-row.
+//
+// `lineBuilders` is an array of `(row) => string | null` functions, one per
+// line of the block; a builder returning null/empty skips that line for
+// that row (e.g. an optional "Notes:" line).
+export function toEntryList(rows, lineBuilders) {
   if (!rows.length) return '(no entries)';
-  const widths = columns.map((c) =>
-    Math.min(40, Math.max(c.label.length, ...rows.map((r) => String(r[c.key] ?? '').length)) + 2)
-  );
-  const header = columns.map((c, i) => pad(c.label, widths[i])).join('');
-  const divider = widths.map((w) => '-'.repeat(w - 1)).join(' ');
-  const lines = rows.map((r) => columns.map((c, i) => pad(r[c.key], widths[i])).join(''));
-  return [header, divider, ...lines].join('\n');
+  return rows
+    .map((row, i) => {
+      const lines = lineBuilders
+        .map((build) => build(row))
+        .filter((line) => line !== null && line !== undefined && line !== '');
+      return lines.map((line, j) => (j === 0 ? `${i + 1}. ${line}` : `   ${line}`)).join('\n');
+    })
+    .join('\n\n');
 }
