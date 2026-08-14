@@ -38,6 +38,25 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Ex
     downloadTextFile(filename, csv);
   }
 
+  // Lets the email modal attach the export as a real CSV file when sharing,
+  // which has no practical size limit -- unlike inlining everything as text
+  // into a share/mailto call, which can silently fail once a report gets
+  // long (lots of technicians/entries/notes).
+  async function getCsvFile() {
+    if (buildCsv) {
+      const { filename, csv } = await buildCsv();
+      return new File([csv], filename, { type: 'text/csv' });
+    }
+    if (csvHref) {
+      const res = await fetch(csvHref);
+      if (!res.ok) throw new Error('Could not prepare the spreadsheet file');
+      const blob = await res.blob();
+      const name = decodeURIComponent(csvHref.split('/').pop().split('?')[0]) || 'export.csv';
+      return new File([blob], name, { type: 'text/csv' });
+    }
+    return null;
+  }
+
   return (
     <div className={`relative ${className}`} ref={menuRef}>
       <button
@@ -101,6 +120,7 @@ export default function ExportMenu({ csvHref, buildCsv, buildReport, label = 'Ex
         <EmailTemplateModal
           subject={emailReport.subject}
           body={emailReport.body}
+          getCsvFile={csvHref || buildCsv ? getCsvFile : null}
           onClose={() => setEmailReport(null)}
         />
       )}

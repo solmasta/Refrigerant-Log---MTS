@@ -4,15 +4,16 @@ import { copyText } from '../utils/clipboard.js';
 
 const MAILTO_SAFE_LENGTH = 1800;
 
-// navigator.share() hands text straight to the OS share sheet (Mail, Gmail,
+// navigator.share() hands data straight to the OS share sheet (Mail, Gmail,
 // etc.) with no URL involved, so it isn't limited by a mailto: link's
 // browser-enforced length cap — that's what makes long, full reports arrive
 // complete instead of getting cut off.
 const canWebShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
-export default function EmailTemplateModal({ subject, body, onClose }) {
+export default function EmailTemplateModal({ subject, body, getCsvFile, onClose }) {
   const [to, setTo] = useState('');
   const [copiedField, setCopiedField] = useState(null);
+  const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState('');
 
   const mailtoHref = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(
@@ -28,14 +29,48 @@ export default function EmailTemplateModal({ subject, body, onClose }) {
     }
   }
 
+  // Text inlined into a share call isn't unlimited in practice -- some
+  // share targets choke on very long reports (lots of technicians/entries/
+  // notes). Attaching the export as a real CSV file sidesteps that
+  // entirely, so try progressively simpler combinations until one works,
+  // rather than failing outright the moment the richest option doesn't.
   async function handleShare() {
     setShareError('');
+    setSharing(true);
     try {
-      await navigator.share({ title: subject, text: `${subject}\n\n${body}` });
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        setShareError('Could not open the share sheet. Use Copy above and paste into a new email instead.');
+      let file = null;
+      if (getCsvFile) {
+        try {
+          file = await getCsvFile();
+        } catch {
+          file = null;
+        }
       }
+
+      const attempts = [];
+      if (file && navigator.canShare?.({ files: [file] })) {
+        attempts.push({ title: subject, text: body, files: [file] });
+        attempts.push({ title: subject, files: [file] });
+      }
+      attempts.push({ title: subject, text: body });
+
+      let lastError;
+      for (const data of attempts) {
+        try {
+          await navigator.share(data);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return; // user closed the share sheet themselves
+          lastError = err;
+        }
+      }
+      throw lastError;
+    } catch {
+      setShareError(
+        'Could not open the share sheet. Use Copy above and paste into a new email instead, or use Download CSV from the export menu.'
+      );
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -94,7 +129,8 @@ export default function EmailTemplateModal({ subject, body, onClose }) {
         {!canWebShare && tooLongForMailto && (
           <p className="text-xs text-amber-600">
             This report is long, so some email apps may cut off the body when opened directly.
-            Copy the text above and paste it into a new email to be safe.
+            Copy the text above and paste it into a new email to be safe, or use Download CSV
+            from the export menu instead.
           </p>
         )}
 
@@ -102,9 +138,10 @@ export default function EmailTemplateModal({ subject, body, onClose }) {
           {canWebShare ? (
             <button
               onClick={handleShare}
-              className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
+              disabled={sharing}
+              className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:opacity-60"
             >
-              Share / Open in Mail
+              {sharing ? 'Opening…' : 'Share / Open in Mail'}
             </button>
           ) : (
             <a

@@ -26,11 +26,13 @@ or database to manage, and it's free at this app's scale.
   template, available for the roster, usage logs, and purchases (with
   optional filters by technician, refrigerant type, and date range). On
   phones and other devices that support the Web Share API, the email
-  template opens the native share sheet (Mail, Gmail, etc.) with the full
-  report — not limited by the length cap a plain `mailto:` link runs into
-  on long reports. Devices without share support fall back to a `mailto:`
-  link, with a copy-to-clipboard option as a safety net for reports too
-  long for that.
+  template opens the native share sheet (Mail, Gmail, etc.) and tries the
+  richest option that works: the full report as text plus the data
+  attached as a CSV file, then just the CSV file, then just the text, so a
+  very long report (lots of technicians/entries/notes) still gets through
+  as a file attachment even if inlining all of it as text would fail.
+  Devices without share support fall back to a `mailto:` link, with a
+  copy-to-clipboard option as a safety net for reports too long for that.
 - **Monthly reminder emails** — every technician with an email on file
   automatically gets a reminder to log any outstanding entries before the
   month closes out. The day it fires (1st–31st, default the 28th) is
