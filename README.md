@@ -196,18 +196,30 @@ waiting for the 28th.
 
 ## Installing on a phone
 
-The app is a PWA (installable web app) — no app store needed.
+The app is a PWA (installable web app) — no app store needed. Technicians
+and admins install it as **two separate apps**, each with its own icon and
+name, even though it's one site: install from a `/technician/*` page and you
+get "Refrigerant Log" (blue icon); install from a `/admin/*` page and you get
+"MTS Admin" (dark icon). This is done by swapping the manifest and icon
+declarations client-side based on the current route (see
+`client/src/components/PwaScopeManager.jsx`) — same origin and codebase,
+distinct installs.
 
-- **Android (Chrome):** open the site, tap the **⋮** menu → **Add to Home
-  screen** / **Install app**. Chrome may also show an install banner
-  automatically.
-- **iPhone/iPad (Safari):** open the site, tap the **Share** icon → **Add to
-  Home Screen**. (Push-style install prompts don't exist on iOS Safari —
-  this manual step is how every PWA gets installed there.)
+- **Android (Chrome):** open the technician or admin page, tap the **⋮**
+  menu → **Install app** (if you only see "Create shortcut" instead, the
+  browser hasn't decided the page is installable yet — reload once and try
+  again). Chrome may also show an install banner automatically.
+- **iPhone/iPad (Safari):** open the technician or admin page, tap the
+  **Share** icon → **Add to Home Screen**. (Push-style install prompts
+  don't exist on iOS Safari — this manual step is how every PWA gets
+  installed there.)
 
-Either way, it adds a home screen icon that opens the app full-screen, no
-browser address bar. It's the same live site, not a separate download —
-signing in and all data work exactly the same.
+If someone needs both roles on the same device, install once from a
+technician page and once from an admin page — they'll show up as two
+distinct home screen icons. Either way, installing adds a home screen icon
+that opens straight to that role's login, full-screen, no browser address
+bar. It's the same live site, not a separate download — signing in and all
+data work exactly the same.
 
 ## Working offline
 
