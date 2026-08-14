@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import PwaScopeManager from './components/PwaScopeManager.jsx';
 import Landing from './pages/Landing.jsx';
 import TechnicianLogin from './pages/TechnicianLogin.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
@@ -11,6 +12,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <PwaScopeManager />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/technician/login" element={<TechnicianLogin />} />

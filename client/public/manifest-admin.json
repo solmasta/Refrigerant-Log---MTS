@@ -1,0 +1,15 @@
+{
+  "name": "Refrigerant Log — Admin",
+  "short_name": "MTS Admin",
+  "description": "Admin dashboard for EPA 608 refrigerant compliance tracking",
+  "start_url": "/admin/login",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e293b",
+  "icons": [
+    { "src": "/icon-192-admin.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-admin.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-admin.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

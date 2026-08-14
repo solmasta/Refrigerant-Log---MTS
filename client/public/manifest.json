@@ -1,9 +1,9 @@
 {
-  "name": "Refrigerant Log — MTS",
+  "name": "Refrigerant Log — Technician",
   "short_name": "Refrigerant Log",
   "description": "Digital refrigerant tracking log for EPA 608 compliance",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/technician/login",
+  "scope": "/technician",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#0284c7",
