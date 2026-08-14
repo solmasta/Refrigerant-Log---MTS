@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
             <p className="mt-1 text-sm text-slate-500">
@@ -106,6 +106,7 @@ export default function AdminDashboard() {
             </p>
           </div>
           <ExportMenu
+            className="self-end sm:self-auto"
             label="Export Everything"
             buildCsv={async () => {
               const { technicians: t, logs: l, purchases: p } = await fetchAllData();
