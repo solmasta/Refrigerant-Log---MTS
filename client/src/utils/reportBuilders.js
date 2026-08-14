@@ -14,6 +14,20 @@ function describeFilters(filters, technicians) {
   return parts.length ? `Filters: ${parts.join(' · ')}` : 'Filters: none (showing all entries)';
 }
 
+// Notes are free text and can run long, so they're kept out of the
+// column-aligned table (one long note would force every row's column that
+// wide) and listed in full underneath instead, tied back to the entry via
+// its heading line.
+function notesSection(title, entries, headingFn) {
+  const withNotes = entries.filter((e) => e.notes && e.notes.trim());
+  if (!withNotes.length) return [];
+  return [
+    '',
+    `${title}:`,
+    ...withNotes.flatMap((e) => [`- ${headingFn(e)}`, `  ${e.notes.trim()}`]),
+  ];
+}
+
 const ROSTER_COLUMNS = [
   { key: 'name', label: 'Technician' },
   { key: 'email', label: 'Email' },
@@ -58,28 +72,46 @@ export function buildRosterCsv(technicians) {
   };
 }
 
+// Table columns shown in the aligned email/report view (notes excluded --
+// see notesSection). TSV (copy-to-clipboard) gets every field, matching CSV.
 const LOG_COLUMNS = [
   { key: 'date', label: 'Date' },
   { key: 'technicianName', label: 'Technician' },
   { key: 'equipmentId', label: 'Equipment' },
+  { key: 'location', label: 'Location' },
   { key: 'workOrderNumber', label: 'Work Order #' },
   { key: 'refrigerantType', label: 'Refrigerant' },
   { key: 'serviceType', label: 'Service' },
   { key: 'amountAdded', label: 'Added' },
   { key: 'amountRecovered', label: 'Recovered' },
 ];
+const LOG_TSV_COLUMNS = [...LOG_COLUMNS, { key: 'notes', label: 'Notes' }];
 
-export function buildLogsReport(logs, filters, technicians) {
-  const rows = logs.map((l) => ({
+function logRows(logs) {
+  return logs.map((l) => ({
     date: l.date,
     technicianName: l.technicianName,
     equipmentId: l.equipmentId,
+    location: l.location || '—',
     workOrderNumber: l.workOrderNumber || '—',
     refrigerantType: l.refrigerantType,
     serviceType: l.serviceType,
     amountAdded: l.amountAdded != null ? `${l.amountAdded} ${l.unit}` : '—',
     amountRecovered: l.amountRecovered != null ? `${l.amountRecovered} ${l.unit}` : '—',
+    notes: l.notes || '',
   }));
+}
+
+function logNotesSection(logs) {
+  return notesSection(
+    'Notes',
+    logs,
+    (l) => `${l.date} · ${l.technicianName} · ${l.equipmentId}`
+  );
+}
+
+export function buildLogsReport(logs, filters, technicians) {
+  const rows = logRows(logs);
 
   const totalAdded = logs.reduce((sum, l) => sum + (l.amountAdded || 0), 0);
   const totalRecovered = logs.reduce((sum, l) => sum + (l.amountRecovered || 0), 0);
@@ -93,9 +125,10 @@ export function buildLogsReport(logs, filters, technicians) {
     toReadableTable(rows, LOG_COLUMNS),
     '',
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
+    ...logNotesSection(logs),
   ].join('\n');
 
-  return { subject, body, tsv: toTsv(rows, LOG_COLUMNS) };
+  return { subject, body, tsv: toTsv(rows, LOG_TSV_COLUMNS) };
 }
 
 const PURCHASE_COLUMNS = [
@@ -105,17 +138,33 @@ const PURCHASE_COLUMNS = [
   { key: 'quantity', label: 'Quantity' },
   { key: 'cost', label: 'Cost' },
   { key: 'supplier', label: 'Supplier' },
+  { key: 'invoiceNumber', label: 'Invoice #' },
 ];
+const PURCHASE_TSV_COLUMNS = [...PURCHASE_COLUMNS, { key: 'notes', label: 'Notes' }];
 
-export function buildPurchasesReport(purchases, filters, technicians) {
-  const rows = purchases.map((p) => ({
+function purchaseRows(purchases) {
+  return purchases.map((p) => ({
     date: p.date,
     technicianName: p.technicianName,
     refrigerantType: p.refrigerantType,
     quantity: `${p.quantity} ${p.unit}`,
     cost: p.cost != null ? `$${p.cost.toFixed(2)}` : '—',
     supplier: p.supplier || '—',
+    invoiceNumber: p.invoiceNumber || '—',
+    notes: p.notes || '',
   }));
+}
+
+function purchaseNotesSection(purchases) {
+  return notesSection(
+    'Notes',
+    purchases,
+    (p) => `${p.date} · ${p.technicianName} · ${p.refrigerantType}`
+  );
+}
+
+export function buildPurchasesReport(purchases, filters, technicians) {
+  const rows = purchaseRows(purchases);
 
   const totalQty = purchases.reduce((sum, p) => sum + (p.quantity || 0), 0);
   const totalCost = purchases.reduce((sum, p) => sum + (p.cost || 0), 0);
@@ -129,9 +178,10 @@ export function buildPurchasesReport(purchases, filters, technicians) {
     toReadableTable(rows, PURCHASE_COLUMNS),
     '',
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
+    ...purchaseNotesSection(purchases),
   ].join('\n');
 
-  return { subject, body, tsv: toTsv(rows, PURCHASE_COLUMNS) };
+  return { subject, body, tsv: toTsv(rows, PURCHASE_TSV_COLUMNS) };
 }
 
 // Raw (unformatted) column sets used for CSV/spreadsheet export, matching
@@ -183,24 +233,8 @@ export function buildCombinedCsv(technicians, logs, purchases) {
 }
 
 export function buildCombinedReport(technicians, logs, purchases) {
-  const logRows = logs.map((l) => ({
-    date: l.date,
-    technicianName: l.technicianName,
-    equipmentId: l.equipmentId,
-    workOrderNumber: l.workOrderNumber || '—',
-    refrigerantType: l.refrigerantType,
-    serviceType: l.serviceType,
-    amountAdded: l.amountAdded != null ? `${l.amountAdded} ${l.unit}` : '—',
-    amountRecovered: l.amountRecovered != null ? `${l.amountRecovered} ${l.unit}` : '—',
-  }));
-  const purchaseRows = purchases.map((p) => ({
-    date: p.date,
-    technicianName: p.technicianName,
-    refrigerantType: p.refrigerantType,
-    quantity: `${p.quantity} ${p.unit}`,
-    cost: p.cost != null ? `$${p.cost.toFixed(2)}` : '—',
-    supplier: p.supplier || '—',
-  }));
+  const logR = logRows(logs);
+  const purchaseR = purchaseRows(purchases);
   const techRows = rosterRows(technicians);
 
   const totalAdded = logs.reduce((sum, l) => sum + (l.amountAdded || 0), 0);
@@ -219,12 +253,14 @@ export function buildCombinedReport(technicians, logs, purchases) {
     `${technicians.length} technicians`,
     '',
     '── USAGE LOGS ──',
-    toReadableTable(logRows, LOG_COLUMNS),
+    toReadableTable(logR, LOG_COLUMNS),
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
+    ...logNotesSection(logs),
     '',
     '── PURCHASES ──',
-    toReadableTable(purchaseRows, PURCHASE_COLUMNS),
+    toReadableTable(purchaseR, PURCHASE_COLUMNS),
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
+    ...purchaseNotesSection(purchases),
   ].join('\n');
 
   const tsv = [
@@ -232,10 +268,10 @@ export function buildCombinedReport(technicians, logs, purchases) {
     toTsv(techRows, ROSTER_COLUMNS),
     '',
     'USAGE LOGS',
-    toTsv(logRows, LOG_COLUMNS),
+    toTsv(logR, LOG_TSV_COLUMNS),
     '',
     'PURCHASES',
-    toTsv(purchaseRows, PURCHASE_COLUMNS),
+    toTsv(purchaseR, PURCHASE_TSV_COLUMNS),
   ].join('\n');
 
   return { subject, body, tsv };
