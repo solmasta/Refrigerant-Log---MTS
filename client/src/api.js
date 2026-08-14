@@ -1,8 +1,25 @@
 const TOKEN_KEY = 'rl_token';
 const USER_KEY = 'rl_user';
+const LAST_TECHNICIAN_KEY = 'rl_last_technician';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
+}
+
+// Remembered on this device so a technician can sign back in with one tap
+// instead of retyping their name every time. Not tied to the session --
+// survives sign-out, since the whole point is to skip typing next time too.
+export function getLastTechnicianName() {
+  const raw = localStorage.getItem(LAST_TECHNICIAN_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function setLastTechnicianName(firstName, lastName) {
+  localStorage.setItem(LAST_TECHNICIAN_KEY, JSON.stringify({ firstName, lastName }));
+}
+
+export function clearLastTechnicianName() {
+  localStorage.removeItem(LAST_TECHNICIAN_KEY);
 }
 
 export function getStoredUser() {

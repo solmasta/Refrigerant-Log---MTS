@@ -11,7 +11,9 @@ or database to manage, and it's free at this app's scale.
 ## Features
 
 - **Technician sign-in** — enter first and last name; new technicians are
-  added to the roster automatically. No shared password.
+  added to the roster automatically. No shared password. The name is
+  remembered on that device afterward, so returning technicians get a
+  one-tap "Continue as [name]" instead of retyping it every time.
 - **Admin dashboard** — separate password-protected login with its own
   session. View the technician roster, all usage logs, and all purchases at a
   glance.

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { api, setSession, clearSession, getStoredUser, getToken } from '../api.js';
+import { api, setSession, clearSession, getStoredUser, getToken, setLastTechnicianName } from '../api.js';
 
 const AuthContext = createContext(null);
 
@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
     const sessionUser = { role: 'technician', ...data.technician };
     setSession(data.token, sessionUser);
     setUser(sessionUser);
+    setLastTechnicianName(data.technician.firstName, data.technician.lastName);
     return sessionUser;
   }, []);
 
