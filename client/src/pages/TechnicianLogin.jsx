@@ -37,7 +37,7 @@ export default function TechnicianLogin() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-4">
+    <div className="relative flex min-h-dvh items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-4">
       <Link
         to="/"
         className="absolute left-4 top-4 text-sm text-slate-500 hover:text-slate-700 sm:left-6 sm:top-6"

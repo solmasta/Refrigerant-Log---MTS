@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function Landing() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-4">
       <div className="w-full max-w-3xl text-center">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-lg shadow-sky-200">
           <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8">
