@@ -2,6 +2,17 @@ import { toCsv, toEntryList, toTsv } from './textTable.js';
 
 const todayLabel = () => new Date().toLocaleDateString();
 
+// Formats an ISO date ("2026-08-13" or "2026-08-13T00:00:00Z") as "08/13/26"
+// by slicing the string directly rather than going through `new Date(...)`,
+// which can shift a date-only value to the previous day depending on the
+// reader's timezone.
+function shortDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return iso || '—';
+  const [, y, mo, d] = m;
+  return `${mo}/${d}/${y.slice(2)}`;
+}
+
 function describeFilters(filters, technicians) {
   const parts = [];
   if (filters.technicianId) {
@@ -12,12 +23,6 @@ function describeFilters(filters, technicians) {
   if (filters.dateFrom) parts.push(`From: ${filters.dateFrom}`);
   if (filters.dateTo) parts.push(`To: ${filters.dateTo}`);
   return parts.length ? `Filters: ${parts.join(' · ')}` : 'Filters: none (showing all entries)';
-}
-
-// Joins non-empty parts with " · ", dropping the "—" placeholder rows use
-// for missing optional fields so blank fields don't show up as bare labels.
-function joinParts(parts) {
-  return parts.filter((p) => p[1] && p[1] !== '—').map(([label, value]) => `${label}: ${value}`).join(' · ');
 }
 
 const ROSTER_COLUMNS = [
@@ -40,15 +45,17 @@ function rosterRows(technicians) {
   }));
 }
 
-// Each report body renders one short, self-labeled block per row (see
-// toEntryList) rather than a padded/aligned table, so it stays readable in
+// Each report body renders one short, label:value block per row (see
+// toEntryList) instead of a padded/aligned table, so it stays readable in
 // plain-text email clients -- which almost always show plain text in a
 // proportional font, not monospace -- and wraps cleanly on a phone screen.
-function rosterEntryList(rows) {
-  return toEntryList(rows, [
-    (r) => `${r.name}${r.email ? ` <${r.email}>` : ''}`,
-    (r) => `Onboarded ${r.onboarded} · ${r.logCount} log${r.logCount === 1 ? '' : 's'} · ${r.purchaseCount} purchase${r.purchaseCount === 1 ? '' : 's'}`,
-    (r) => `Last entry: ${r.lastEntry}`,
+// Two related fields share a line via " | "; a field that can run long
+// (location, notes) gets its own line instead of being crammed in.
+function rosterEntryList(technicians) {
+  return toEntryList(technicians, [
+    (t) => `${t.firstName} ${t.lastName}${t.email ? ` <${t.email}>` : ''}`,
+    (t) => `Onboarded: ${shortDate(t.createdAt)} | Logs: ${t.logCount} | Purchases: ${t.purchaseCount}`,
+    (t) => `Last entry: ${t.lastEntryAt ? new Date(t.lastEntryAt).toLocaleString() : 'No entries yet'}`,
   ]);
 }
 
@@ -60,7 +67,7 @@ export function buildRosterReport(technicians) {
     'Technician Roster — Refrigerant Log MTS',
     `Generated ${todayLabel()}`,
     '',
-    rosterEntryList(rows),
+    rosterEntryList(technicians),
     '',
     `Total technicians: ${technicians.length}`,
   ].join('\n');
@@ -106,12 +113,20 @@ function logRows(logs) {
   }));
 }
 
-function logEntryList(rows) {
-  return toEntryList(rows, [
-    (r) => `${r.date} — ${r.technicianName} — ${r.equipmentId}`,
-    (r) => joinParts([['Location', r.location], ['WO#', r.workOrderNumber]]) || null,
-    (r) => `${r.refrigerantType} · ${r.serviceType} · Added ${r.amountAdded} · Recovered ${r.amountRecovered}`,
-    (r) => (r.notes && r.notes.trim() ? `Notes: ${r.notes.trim()}` : null),
+function addedRecovered(l) {
+  const unit = l.unit || 'lbs';
+  const added = l.amountAdded != null ? l.amountAdded : 0;
+  const recovered = l.amountRecovered != null ? l.amountRecovered : 0;
+  return `+${added} ${unit} / ${recovered} ${unit}`;
+}
+
+function logEntryList(logs) {
+  return toEntryList(logs, [
+    (l) => `USAGE (${shortDate(l.date)})${l.workOrderNumber ? ` — WO#${l.workOrderNumber}` : ''}`,
+    (l) => `Tech: ${l.technicianName} | Unit: ${l.equipmentId}`,
+    (l) => `Loc: ${l.location || '—'} | Ref: ${l.refrigerantType}`,
+    (l) => `Type: ${l.serviceType} | ${addedRecovered(l)}`,
+    (l) => (l.notes && l.notes.trim() ? `Notes: ${l.notes.trim()}` : null),
   ]);
 }
 
@@ -127,7 +142,7 @@ export function buildLogsReport(logs, filters, technicians) {
     `Generated ${todayLabel()}`,
     describeFilters(filters, technicians),
     '',
-    logEntryList(rows),
+    logEntryList(logs),
     '',
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
   ].join('\n');
@@ -159,12 +174,14 @@ function purchaseRows(purchases) {
   }));
 }
 
-function purchaseEntryList(rows) {
-  return toEntryList(rows, [
-    (r) => `${r.date} — ${r.technicianName}`,
-    (r) => `${r.refrigerantType} · ${r.quantity} · ${r.cost}`,
-    (r) => joinParts([['Supplier', r.supplier], ['Invoice #', r.invoiceNumber]]) || null,
-    (r) => (r.notes && r.notes.trim() ? `Notes: ${r.notes.trim()}` : null),
+function purchaseEntryList(purchases) {
+  return toEntryList(purchases, [
+    (p) => `PURCHASE (${shortDate(p.date)})`,
+    (p) => `Tech: ${p.technicianName} | Ref: ${p.refrigerantType}`,
+    (p) => `Qty: ${p.quantity} ${p.unit} | Cost: ${p.cost != null ? `$${p.cost.toFixed(2)}` : '—'}`,
+    (p) => (p.supplier ? `Supplier: ${p.supplier}` : null),
+    (p) => (p.invoiceNumber ? `Inv: ${p.invoiceNumber}` : null),
+    (p) => (p.notes && p.notes.trim() ? `Notes: ${p.notes.trim()}` : null),
   ]);
 }
 
@@ -180,7 +197,7 @@ export function buildPurchasesReport(purchases, filters, technicians) {
     `Generated ${todayLabel()}`,
     describeFilters(filters, technicians),
     '',
-    purchaseEntryList(rows),
+    purchaseEntryList(purchases),
     '',
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
   ].join('\n');
@@ -237,10 +254,6 @@ export function buildCombinedCsv(technicians, logs, purchases) {
 }
 
 export function buildCombinedReport(technicians, logs, purchases) {
-  const logR = logRows(logs);
-  const purchaseR = purchaseRows(purchases);
-  const techRows = rosterRows(technicians);
-
   const totalAdded = logs.reduce((sum, l) => sum + (l.amountAdded || 0), 0);
   const totalRecovered = logs.reduce((sum, l) => sum + (l.amountRecovered || 0), 0);
   const totalQty = purchases.reduce((sum, p) => sum + (p.quantity || 0), 0);
@@ -253,27 +266,27 @@ export function buildCombinedReport(technicians, logs, purchases) {
     '(All technicians, all entries, no filters applied)',
     '',
     '── TECHNICIAN ROSTER ──',
-    rosterEntryList(techRows),
+    rosterEntryList(technicians),
     `${technicians.length} technicians`,
     '',
     '── USAGE LOGS ──',
-    logEntryList(logR),
+    logEntryList(logs),
     `${logs.length} entries · ${totalAdded.toFixed(2)} lbs added · ${totalRecovered.toFixed(2)} lbs recovered`,
     '',
     '── PURCHASES ──',
-    purchaseEntryList(purchaseR),
+    purchaseEntryList(purchases),
     `${purchases.length} orders · ${totalQty.toFixed(2)} lbs purchased · $${totalCost.toFixed(2)} spent`,
   ].join('\n');
 
   const tsv = [
     'TECHNICIAN ROSTER',
-    toTsv(techRows, ROSTER_COLUMNS),
+    toTsv(rosterRows(technicians), ROSTER_COLUMNS),
     '',
     'USAGE LOGS',
-    toTsv(logR, LOG_TSV_COLUMNS),
+    toTsv(logRows(logs), LOG_TSV_COLUMNS),
     '',
     'PURCHASES',
-    toTsv(purchaseR, PURCHASE_TSV_COLUMNS),
+    toTsv(purchaseRows(purchases), PURCHASE_TSV_COLUMNS),
   ].join('\n');
 
   return { subject, body, tsv };
