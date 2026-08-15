@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
+const LANDING = { manifest: '/manifest-landing.json', icon: '/apple-touch-icon.png', theme: '#0284c7' };
 const TECHNICIAN = { manifest: '/manifest.json', icon: '/apple-touch-icon.png', theme: '#0284c7' };
 const ADMIN = { manifest: '/manifest-admin.json', icon: '/apple-touch-icon-admin.png', theme: '#1e293b' };
 
@@ -16,11 +17,22 @@ function setLinkHref(rel, href) {
 // browser is currently rendering -- this also has to happen on client-side
 // route changes (not just full page loads), since navigating between
 // /technician and /admin never reloads index.html.
+//
+// Anyone installing from the landing page itself (the one link everybody
+// gets, before choosing admin or technician) needs its own neutral
+// manifest with start_url "/" -- otherwise they'd silently inherit
+// whichever manifest happened to be linked by default, and the installed
+// icon would always jump straight into one role's login instead of
+// reopening the picker.
 export default function PwaScopeManager() {
   const location = useLocation();
 
   useEffect(() => {
-    const target = location.pathname.startsWith('/admin') ? ADMIN : TECHNICIAN;
+    const target = location.pathname.startsWith('/admin')
+      ? ADMIN
+      : location.pathname.startsWith('/technician')
+        ? TECHNICIAN
+        : LANDING;
     setLinkHref('manifest', target.manifest);
     setLinkHref('apple-touch-icon', target.icon);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', target.theme);
