@@ -148,6 +148,43 @@ export async function setAdminPasswordHash(db, hash) {
     .run();
 }
 
+const ADMIN_LOCKOUT_THRESHOLD = 10;
+const ADMIN_LOCKOUT_MINUTES = 15;
+
+export async function getAdminLoginState(db) {
+  const row = await db
+    .prepare('SELECT failed_attempts, locked_until FROM admin_settings WHERE id = 1')
+    .first();
+  return {
+    failedAttempts: row?.failed_attempts ?? 0,
+    lockedUntil: row?.locked_until ?? null,
+  };
+}
+
+// Locks out further attempts for ADMIN_LOCKOUT_MINUTES once
+// ADMIN_LOCKOUT_THRESHOLD failures have accumulated; a failure that arrives
+// after a lock has expired pushes the lock out again immediately, so
+// repeated guessing can't just wait out one lockout window and resume.
+export async function recordFailedAdminLogin(db) {
+  const { failedAttempts } = await getAdminLoginState(db);
+  const attempts = failedAttempts + 1;
+  const lockedUntil =
+    attempts >= ADMIN_LOCKOUT_THRESHOLD
+      ? new Date(Date.now() + ADMIN_LOCKOUT_MINUTES * 60 * 1000).toISOString()
+      : null;
+  await db
+    .prepare('UPDATE admin_settings SET failed_attempts = ?, locked_until = ? WHERE id = 1')
+    .bind(attempts, lockedUntil)
+    .run();
+  return { failedAttempts: attempts, lockedUntil };
+}
+
+export async function resetAdminLoginAttempts(db) {
+  await db
+    .prepare('UPDATE admin_settings SET failed_attempts = 0, locked_until = NULL WHERE id = 1')
+    .run();
+}
+
 export async function getReminderDay(db) {
   const row = await db.prepare('SELECT reminder_day FROM admin_settings WHERE id = 1').first();
   return row?.reminder_day ?? 28;

@@ -10,6 +10,9 @@ import {
   deleteTechnician,
   ensureAdminPasswordHash,
   setAdminPasswordHash,
+  getAdminLoginState,
+  recordFailedAdminLogin,
+  resetAdminLoginAttempts,
   getReminderDay,
   setReminderDay,
   insertLog,
@@ -51,11 +54,22 @@ app.post('/api/auth/admin-login', async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { password } = body;
 
+  const { lockedUntil } = await getAdminLoginState(c.env.DB);
+  if (lockedUntil && new Date(lockedUntil) > new Date()) {
+    const minutesLeft = Math.ceil((new Date(lockedUntil) - new Date()) / 60000);
+    return c.json(
+      { error: `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.` },
+      429
+    );
+  }
+
   const hash = await ensureAdminPasswordHash(c.env.DB, c.env.ADMIN_PASSWORD || 'ChangeMe123!');
   if (!password || !bcrypt.compareSync(password, hash)) {
+    await recordFailedAdminLogin(c.env.DB);
     return c.json({ error: 'Incorrect admin password' }, 401);
   }
 
+  await resetAdminLoginAttempts(c.env.DB);
   const token = await signToken({ role: 'admin' }, c.env.JWT_SECRET);
   return c.json({ token });
 });
@@ -68,8 +82,8 @@ app.post('/api/auth/admin-change-password', requireAdmin, async (c) => {
   if (!currentPassword || !bcrypt.compareSync(currentPassword, hash)) {
     return c.json({ error: 'Current password is incorrect' }, 401);
   }
-  if (!newPassword || newPassword.length < 8) {
-    return c.json({ error: 'New password must be at least 8 characters' }, 400);
+  if (!newPassword || !/^\d{4}$/.test(newPassword)) {
+    return c.json({ error: 'New password must be exactly 4 digits' }, 400);
   }
 
   await setAdminPasswordHash(c.env.DB, bcrypt.hashSync(newPassword, 10));

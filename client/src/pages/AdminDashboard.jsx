@@ -585,17 +585,23 @@ function AdminSettings() {
         <input
           type="password"
           required
-          placeholder="New password (min. 8 characters)"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          placeholder="New 4-digit PIN"
           value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
           className={filterInput + ' w-full'}
         />
         <input
           type="password"
           required
-          placeholder="Confirm new password"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          placeholder="Confirm 4-digit PIN"
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
           className={filterInput + ' w-full'}
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
