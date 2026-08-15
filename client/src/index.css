@@ -25,3 +25,16 @@ body {
 ::selection {
   background-color: #bae6fd;
 }
+
+/* iOS Safari auto-zooms the whole page when a focused form control's
+   font-size is under 16px, independently of the viewport meta tag --
+   maximum-scale/user-scalable only stop manual pinch-zoom, not this.
+   Nearly every input/select/textarea here uses Tailwind's text-sm (14px)
+   or text-xs (12px), so override just the real form controls to 16px
+   (the !important is needed to beat those utility classes' specificity).
+   Labels and buttons are untouched. */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
