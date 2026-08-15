@@ -28,14 +28,21 @@ export async function sendEmail(env, { to, subject, html, text }) {
 
 export function buildReminderEmail(technician, appUrl) {
   const loginUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/technician/login` : null;
-  const monthLabel = new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  // Day 0 of next month rolls back to the last day of the current month.
+  const deadlineLabel = new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
-  const subject = `Reminder: update your refrigerant logs before ${monthLabel} closes out`;
+  const subject = `Reminder: refrigerant logs due by ${deadlineLabel}`;
 
   const text = [
     `Hi ${technician.firstName},`,
     '',
-    `This is a monthly reminder to make sure your refrigerant usage and purchase entries are logged before ${monthLabel} closes out.`,
+    `This is a monthly reminder that your refrigerant usage and purchase entries for ${monthLabel} must be submitted by the end of the month — ${deadlineLabel}.`,
     '',
     loginUrl ? `Log in here: ${loginUrl}` : null,
     '',
@@ -46,7 +53,7 @@ export function buildReminderEmail(technician, appUrl) {
 
   const html = `
     <p>Hi ${escapeHtml(technician.firstName)},</p>
-    <p>This is a monthly reminder to make sure your refrigerant usage and purchase entries are logged before ${escapeHtml(monthLabel)} closes out.</p>
+    <p>This is a monthly reminder that your refrigerant usage and purchase entries for ${escapeHtml(monthLabel)} must be submitted by the end of the month — <strong>${escapeHtml(deadlineLabel)}</strong>.</p>
     ${loginUrl ? `<p><a href="${escapeHtml(loginUrl)}">Log in to Refrigerant Log MTS</a></p>` : ''}
     <p>— Refrigerant Log MTS</p>
   `.trim();
