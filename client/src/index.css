@@ -14,6 +14,12 @@ body {
   background-color: #f1f5f9;
   color: #0f172a;
   font-family: var(--font-sans);
+  /* Keeps content clear of the notch/status bar and the home-indicator
+     strip when running full-screen from the iOS home screen; falls back
+     to 0 everywhere else (viewport-fit=cover is required for this to be
+     non-zero at all). */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 ::selection {

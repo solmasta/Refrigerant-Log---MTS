@@ -51,7 +51,7 @@ export default function TechnicianDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-dvh bg-slate-50">
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-slate-900">Field Log</h1>

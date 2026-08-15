@@ -24,7 +24,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-900 px-4">
+    <div className="relative flex min-h-dvh items-center justify-center bg-slate-900 px-4">
       <Link
         to="/"
         className="absolute left-4 top-4 text-sm text-slate-400 hover:text-slate-200 sm:left-6 sm:top-6"
