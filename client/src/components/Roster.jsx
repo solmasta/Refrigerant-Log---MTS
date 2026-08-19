@@ -1,20 +1,26 @@
 import { useState } from 'react';
 
-export default function Roster({ technicians, onEdit, onDelete }) {
+export default function Roster({ technicians, onAdd, onEdit, onDelete }) {
   const [editingId, setEditingId] = useState(null);
 
   if (!technicians.length) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-        No technicians have signed in yet.
-      </div>
+      <>
+        <AddTechnicianForm onAdd={onAdd} />
+        <div className="mt-3 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+          No technicians on the roster yet. Add one above — they can log in once you've given them
+          their name, and you can email them at the address you enter even before they sign in.
+        </div>
+      </>
     );
   }
 
   return (
     <>
+      <AddTechnicianForm onAdd={onAdd} />
+
       {/* Mobile: stacked cards, no horizontal scrolling */}
-      <div className="space-y-3 sm:hidden">
+      <div className="mt-3 space-y-3 sm:hidden">
         {technicians.map((t) =>
           editingId === t.id ? (
             <RosterEditCard
@@ -63,7 +69,7 @@ export default function Roster({ technicians, onEdit, onDelete }) {
       </div>
 
       {/* sm and up: full table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 sm:block">
+      <div className="mt-3 hidden overflow-x-auto rounded-xl border border-slate-200 sm:block">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
@@ -135,6 +141,94 @@ export default function Roster({ technicians, onEdit, onDelete }) {
         </table>
       </div>
     </>
+  );
+}
+
+function AddTechnicianForm({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-lg border border-sky-600 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50"
+      >
+        + Add technician
+      </button>
+    );
+  }
+
+  function reset() {
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setError('');
+    setOpen(false);
+  }
+
+  async function handleAdd() {
+    setError('');
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('First and last name are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onAdd({ firstName, lastName, email });
+      reset();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 text-sm">
+      <p className="mb-2 text-xs font-medium text-slate-600">
+        Add a technician to the roster before they've signed in — useful for entering an email so
+        you can notify them.
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          placeholder="First name"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-200 sm:w-1/4"
+        />
+        <input
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          placeholder="Last name"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-200 sm:w-1/4"
+        />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email@example.com (optional)"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-200 sm:flex-1"
+        />
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      <div className="mt-3 flex gap-3">
+        <button
+          onClick={handleAdd}
+          disabled={saving}
+          className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+        >
+          {saving ? 'Adding…' : 'Add technician'}
+        </button>
+        <button onClick={reset} className="text-xs font-medium text-slate-500 hover:text-slate-700">
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

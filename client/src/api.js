@@ -97,6 +97,7 @@ export const api = {
   me: () => request('/me'),
   referenceData: () => request('/reference-data', { auth: false }),
   technicians: () => request('/technicians'),
+  createTechnician: (payload) => request('/technicians', { method: 'POST', body: payload }),
   updateTechnician: (id, payload) => request(`/technicians/${id}`, { method: 'PATCH', body: payload }),
   deleteTechnician: (id) => request(`/technicians/${id}`, { method: 'DELETE' }),
   createLog: (payload) => request('/logs', { method: 'POST', body: payload }),
@@ -106,7 +107,8 @@ export const api = {
   listPurchases: (params = {}) => request(`/purchases?${new URLSearchParams(params)}`),
   deletePurchase: (id) => request(`/purchases/${id}`, { method: 'DELETE' }),
   adminSummary: () => request('/admin/summary'),
-  sendReminders: () => request('/admin/send-reminders', { method: 'POST' }),
+  sendReminders: (template = 'monthly') =>
+    request('/admin/send-reminders', { method: 'POST', body: { template } }),
   getReminderSettings: () => request('/admin/reminder-settings'),
   updateReminderSettings: (reminderDay) =>
     request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),

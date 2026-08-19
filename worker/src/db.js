@@ -75,6 +75,38 @@ export async function findOrCreateTechnician(db, firstName, lastName) {
   return rowToTechnician(row);
 }
 
+export async function createTechnician(db, { firstName, lastName, email }) {
+  const first = normalizeName(firstName);
+  const last = normalizeName(lastName);
+
+  const existing = await db
+    .prepare(
+      'SELECT * FROM technicians WHERE lower(first_name) = lower(?) AND lower(last_name) = lower(?)'
+    )
+    .bind(first, last)
+    .first();
+  if (existing) {
+    const err = new Error('A technician with this name already exists');
+    err.status = 409;
+    throw err;
+  }
+
+  const row = {
+    id: crypto.randomUUID(),
+    first_name: first,
+    last_name: last,
+    email: (email || '').trim(),
+    created_at: new Date().toISOString(),
+  };
+  await db
+    .prepare(
+      'INSERT INTO technicians (id, first_name, last_name, email, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+    .bind(row.id, row.first_name, row.last_name, row.email, row.created_at)
+    .run();
+  return rowToTechnician(row);
+}
+
 export async function listTechniciansWithCounts(db) {
   const { results } = await db
     .prepare(

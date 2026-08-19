@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 
 import {
   findOrCreateTechnician,
+  createTechnician,
   listTechniciansWithCounts,
   getTechnician,
   updateTechnician,
@@ -25,7 +26,7 @@ import {
 } from './db.js';
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
-import { sendMonthlyReminders } from './email.js';
+import { sendReminderEmails } from './email.js';
 import { createBackup, listBackups, getBackup, pruneOldBackups } from './backup.js';
 
 const app = new Hono();
@@ -127,6 +128,21 @@ app.get('/api/reference-data', (c) =>
 app.get('/api/technicians', requireAdmin, async (c) => {
   const technicians = await listTechniciansWithCounts(c.env.DB);
   return c.json({ technicians });
+});
+
+app.post('/api/technicians', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { firstName, lastName, email } = body;
+  if (!firstName || !lastName) {
+    return c.json({ error: 'First and last name are required' }, 400);
+  }
+
+  try {
+    const technician = await createTechnician(c.env.DB, { firstName, lastName, email });
+    return c.json({ technician }, 201);
+  } catch (err) {
+    return c.json({ error: err.message }, err.status || 400);
+  }
 });
 
 app.patch('/api/technicians/:id', requireAdmin, async (c) => {
@@ -353,8 +369,10 @@ app.put('/api/admin/reminder-settings', requireAdmin, async (c) => {
 });
 
 app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const template = body.template === 'welcome' ? 'welcome' : 'monthly';
   const technicians = await listTechniciansWithCounts(c.env.DB);
-  const result = await sendMonthlyReminders(c.env, technicians);
+  const result = await sendReminderEmails(c.env, technicians, template);
   return c.json(result);
 });
 
@@ -407,7 +425,7 @@ async function scheduled(event, env) {
   }
 
   const technicians = await listTechniciansWithCounts(env.DB);
-  const result = await sendMonthlyReminders(env, technicians);
+  const result = await sendReminderEmails(env, technicians, 'monthly');
   console.log('Monthly reminder run:', JSON.stringify(result));
 }
 
