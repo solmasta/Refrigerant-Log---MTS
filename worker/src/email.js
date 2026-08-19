@@ -61,6 +61,53 @@ export function buildReminderEmail(technician, appUrl) {
   return { subject, text, html };
 }
 
+// A second-round nudge for technicians who are on the roster but haven't
+// gotten into the habit yet -- a plain-language recap of what the app is
+// and how to use it, rather than the deadline-driven monthly notice.
+export function buildWelcomeReminderEmail(technician, appUrl) {
+  const loginUrl = appUrl ? `${appUrl.replace(/\/$/, '')}/technician/login` : null;
+
+  const subject = `Friendly reminder: how we're using Refrigerant Log MTS`;
+
+  const text = [
+    `Hi ${technician.firstName},`,
+    '',
+    `Just a friendly reminder about Refrigerant Log MTS, the app we're using to track refrigerant usage and purchases.`,
+    '',
+    `Here's how it works:`,
+    `- Log in with just your first and last name -- no password needed.`,
+    `- After every job, log the refrigerant type, amount added/recovered, and equipment info.`,
+    `- Log any refrigerant purchases too, so we keep accurate records.`,
+    '',
+    `It only takes a minute per entry, and it keeps us organized and compliant.`,
+    '',
+    loginUrl ? `Log in here: ${loginUrl}` : null,
+    '',
+    `Thanks for staying on top of this -- let me know if you have any questions.`,
+    '',
+    '— Refrigerant Log MTS',
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
+
+  const html = `
+    <p>Hi ${escapeHtml(technician.firstName)},</p>
+    <p>Just a friendly reminder about Refrigerant Log MTS, the app we're using to track refrigerant usage and purchases.</p>
+    <p>Here's how it works:</p>
+    <ul>
+      <li>Log in with just your first and last name — no password needed.</li>
+      <li>After every job, log the refrigerant type, amount added/recovered, and equipment info.</li>
+      <li>Log any refrigerant purchases too, so we keep accurate records.</li>
+    </ul>
+    <p>It only takes a minute per entry, and it keeps us organized and compliant.</p>
+    ${loginUrl ? `<p><a href="${escapeHtml(loginUrl)}">Log in to Refrigerant Log MTS</a></p>` : ''}
+    <p>Thanks for staying on top of this — let me know if you have any questions.</p>
+    <p>— Refrigerant Log MTS</p>
+  `.trim();
+
+  return { subject, text, html };
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -69,12 +116,18 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-export async function sendMonthlyReminders(env, technicians) {
+export const REMINDER_TEMPLATES = {
+  monthly: { label: 'Monthly deadline reminder', build: buildReminderEmail },
+  welcome: { label: 'Friendly reminder (how to use the app)', build: buildWelcomeReminderEmail },
+};
+
+export async function sendReminderEmails(env, technicians, templateId = 'monthly') {
+  const { build } = REMINDER_TEMPLATES[templateId] || REMINDER_TEMPLATES.monthly;
   const recipients = technicians.filter((t) => t.email && t.email.trim());
 
   const results = await Promise.allSettled(
     recipients.map(async (t) => {
-      const { subject, text, html } = buildReminderEmail(t, env.APP_URL);
+      const { subject, text, html } = build(t, env.APP_URL);
       await sendEmail(env, { to: t.email, subject, text, html });
       return t.email;
     })

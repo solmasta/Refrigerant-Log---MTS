@@ -66,6 +66,11 @@ export default function AdminDashboard() {
     refresh();
   }
 
+  async function handleAddTechnician(payload) {
+    await api.createTechnician(payload);
+    refresh();
+  }
+
   async function handleEditTechnician(id, updates) {
     await api.updateTechnician(id, updates);
     refresh();
@@ -237,6 +242,7 @@ export default function AdminDashboard() {
             </div>
             <Roster
               technicians={technicians}
+              onAdd={handleAddTechnician}
               onEdit={handleEditTechnician}
               onDelete={handleDeleteTechnician}
             />
@@ -323,6 +329,20 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+const REMINDER_TEMPLATES = [
+  {
+    id: 'monthly',
+    label: 'Monthly deadline reminder',
+    description: 'The usual "your entries are due by end of month" notice.',
+  },
+  {
+    id: 'welcome',
+    label: 'Friendly reminder (how to use the app)',
+    description:
+      'A plain-language recap of what the app is for and how to log in — good for a second nudge to anyone who hasn’t gotten started yet.',
+  },
+];
+
 function ReminderEmailsCard() {
   const [reminderDay, setReminderDay] = useState(null);
   const [dayLoading, setDayLoading] = useState(true);
@@ -331,6 +351,7 @@ function ReminderEmailsCard() {
   const [dayMessage, setDayMessage] = useState('');
   const [dayError, setDayError] = useState('');
 
+  const [template, setTemplate] = useState('monthly');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -362,17 +383,17 @@ function ReminderEmailsCard() {
   }
 
   async function handleSend() {
-    if (
-      !confirm(
-        `Send a reminder email right now to every technician with an email on file? This is the same email that goes out automatically on the ${reminderDay ? ordinal(reminderDay) : '28th'} of each month.`
-      )
-    )
-      return;
+    const templateLabel = REMINDER_TEMPLATES.find((t) => t.id === template)?.label || template;
+    const confirmMessage =
+      template === 'monthly'
+        ? `Send the monthly deadline reminder right now to every technician with an email on file? This is the same email that goes out automatically on the ${reminderDay ? ordinal(reminderDay) : '28th'} of each month.`
+        : `Send the "${templateLabel}" email right now to every technician with an email on file?`;
+    if (!confirm(confirmMessage)) return;
     setSending(true);
     setError('');
     setResult(null);
     try {
-      const res = await api.sendReminders();
+      const res = await api.sendReminders(template);
       setResult(res);
     } catch (err) {
       setError(err.message);
@@ -417,10 +438,28 @@ function ReminderEmailsCard() {
       {dayMessage && <p className="mt-1 text-xs text-emerald-600">{dayMessage}</p>}
       {dayError && <p className="mt-1 text-xs text-red-600">{dayError}</p>}
 
+      <label className="mt-5 block">
+        <span className="mb-1 block text-xs font-medium text-slate-600">Email template</span>
+        <select
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+        >
+          {REMINDER_TEMPLATES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-slate-500">
+          {REMINDER_TEMPLATES.find((t) => t.id === template)?.description}
+        </span>
+      </label>
+
       <button
         onClick={handleSend}
         disabled={sending}
-        className="mt-4 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+        className="mt-3 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
       >
         {sending ? 'Sending…' : 'Send reminder emails now'}
       </button>
