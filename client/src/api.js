@@ -107,10 +107,14 @@ export const api = {
   listPurchases: (params = {}) => request(`/purchases?${new URLSearchParams(params)}`),
   deletePurchase: (id) => request(`/purchases/${id}`, { method: 'DELETE' }),
   adminSummary: () => request('/admin/summary'),
-  sendReminders: (template = 'monthly') =>
-    request('/admin/send-reminders', { method: 'POST', body: { template } }),
-  previewReminder: (template = 'monthly') =>
-    request(`/admin/reminder-preview?template=${encodeURIComponent(template)}`),
+  sendReminders: (template = 'monthly', technicianIds = null) =>
+    request('/admin/send-reminders', { method: 'POST', body: { template, technicianIds } }),
+  previewReminder: (template = 'monthly', technicianId = null) =>
+    request(
+      `/admin/reminder-preview?template=${encodeURIComponent(template)}${
+        technicianId ? `&technicianId=${encodeURIComponent(technicianId)}` : ''
+      }`
+    ),
   getReminderSettings: () => request('/admin/reminder-settings'),
   updateReminderSettings: (reminderDay) =>
     request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),

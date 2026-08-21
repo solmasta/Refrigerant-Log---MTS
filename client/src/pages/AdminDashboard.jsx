@@ -252,7 +252,7 @@ export default function AdminDashboard() {
 
         {tab === 'settings' && (
           <>
-            <ReminderEmailsCard />
+            <ReminderEmailsCard technicians={technicians} />
             <BackupsCard />
             <AdminSettings />
           </>
@@ -344,7 +344,7 @@ const REMINDER_TEMPLATES = [
   },
 ];
 
-function ReminderEmailsCard() {
+function ReminderEmailsCard({ technicians = [] }) {
   const [reminderDay, setReminderDay] = useState(null);
   const [dayLoading, setDayLoading] = useState(true);
   const [dayInput, setDayInput] = useState(28);
@@ -353,6 +353,8 @@ function ReminderEmailsCard() {
   const [dayError, setDayError] = useState('');
 
   const [template, setTemplate] = useState('monthly');
+  const [recipientMode, setRecipientMode] = useState('all');
+  const [selectedIds, setSelectedIds] = useState([]);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -360,6 +362,10 @@ function ReminderEmailsCard() {
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
+
+  function toggleSelected(id) {
+    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
 
   useEffect(() => {
     api
@@ -391,7 +397,9 @@ function ReminderEmailsCard() {
     setPreviewError('');
     setPreviewLoading(true);
     try {
-      const res = await api.previewReminder(template);
+      const previewTechnicianId =
+        recipientMode === 'select' && selectedIds.length === 1 ? selectedIds[0] : null;
+      const res = await api.previewReminder(template, previewTechnicianId);
       setPreview(res);
     } catch (err) {
       setPreviewError(err.message);
@@ -401,17 +409,28 @@ function ReminderEmailsCard() {
   }
 
   async function handleSend() {
-    const templateLabel = REMINDER_TEMPLATES.find((t) => t.id === template)?.label || template;
-    const confirmMessage =
-      template === 'monthly'
-        ? `Send the monthly deadline reminder right now to every technician with an email on file? This is the same email that goes out automatically on the ${reminderDay ? ordinal(reminderDay) : '28th'} of each month.`
-        : `Send the "${templateLabel}" email right now to every technician with an email on file?`;
-    if (!confirm(confirmMessage)) return;
-    setSending(true);
     setError('');
+    if (recipientMode === 'select' && selectedIds.length === 0) {
+      setError('Select at least one technician, or switch to "Everyone with an email".');
+      return;
+    }
+
+    const templateLabel = REMINDER_TEMPLATES.find((t) => t.id === template)?.label || template;
+    const recipientDescription =
+      recipientMode === 'select'
+        ? `${selectedIds.length} selected technician${selectedIds.length === 1 ? '' : 's'}`
+        : 'every technician with an email on file';
+    const confirmMessage =
+      template === 'monthly' && recipientMode === 'all'
+        ? `Send the monthly deadline reminder right now to every technician with an email on file? This is the same email that goes out automatically on the ${reminderDay ? ordinal(reminderDay) : '28th'} of each month.`
+        : `Send the "${templateLabel}" email right now to ${recipientDescription}?`;
+    if (!confirm(confirmMessage)) return;
+
+    setSending(true);
     setResult(null);
     try {
-      const res = await api.sendReminders(template);
+      const technicianIds = recipientMode === 'select' ? selectedIds : null;
+      const res = await api.sendReminders(template, technicianIds);
       setResult(res);
     } catch (err) {
       setError(err.message);
@@ -474,6 +493,58 @@ function ReminderEmailsCard() {
         </span>
       </label>
 
+      <div className="mt-5">
+        <span className="mb-1 block text-xs font-medium text-slate-600">Send to</span>
+        <div className="flex gap-4 text-sm text-slate-700">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={recipientMode === 'all'}
+              onChange={() => setRecipientMode('all')}
+            />
+            Everyone with an email
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={recipientMode === 'select'}
+              onChange={() => setRecipientMode('select')}
+            />
+            Specific technicians
+          </label>
+        </div>
+
+        {recipientMode === 'select' && (
+          <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+            {technicians.length === 0 ? (
+              <p className="p-3 text-xs text-slate-500">No technicians on the roster yet.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {technicians.map((t) => {
+                  const hasEmail = Boolean(t.email && t.email.trim());
+                  return (
+                    <li key={t.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(t.id)}
+                        disabled={!hasEmail}
+                        onChange={() => toggleSelected(t.id)}
+                      />
+                      <span className={hasEmail ? 'text-slate-800' : 'text-slate-400'}>
+                        {t.firstName} {t.lastName}
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400">
+                        {hasEmail ? t.email : 'no email on file'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           onClick={handleSend}
@@ -533,8 +604,9 @@ function ReminderEmailsCard() {
               </pre>
             </div>
             <p className="text-xs text-slate-400">
-              Shown with a placeholder name — each technician receives it with their own first
-              name filled in.
+              {recipientMode === 'select' && selectedIds.length === 1
+                ? "Shown with this technician's actual first name."
+                : 'Shown with a placeholder name — each technician receives it with their own first name filled in.'}
             </p>
           </div>
         </Modal>
