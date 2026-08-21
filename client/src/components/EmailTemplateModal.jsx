@@ -10,8 +10,8 @@ const MAILTO_SAFE_LENGTH = 1800;
 // complete instead of getting cut off.
 const canWebShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
-export default function EmailTemplateModal({ subject, body, getCsvFile, onClose }) {
-  const [to, setTo] = useState('');
+export default function EmailTemplateModal({ subject, body, getCsvFile, initialTo = '', onClose }) {
+  const [to, setTo] = useState(initialTo);
   const [copiedField, setCopiedField] = useState(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState('');
