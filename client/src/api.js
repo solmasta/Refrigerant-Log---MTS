@@ -109,6 +109,8 @@ export const api = {
   adminSummary: () => request('/admin/summary'),
   sendReminders: (template = 'monthly') =>
     request('/admin/send-reminders', { method: 'POST', body: { template } }),
+  previewReminder: (template = 'monthly') =>
+    request(`/admin/reminder-preview?template=${encodeURIComponent(template)}`),
   getReminderSettings: () => request('/admin/reminder-settings'),
   updateReminderSettings: (reminderDay) =>
     request('/admin/reminder-settings', { method: 'PUT', body: { reminderDay } }),

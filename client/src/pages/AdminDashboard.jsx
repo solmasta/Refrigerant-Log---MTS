@@ -5,6 +5,7 @@ import Roster from '../components/Roster.jsx';
 import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
 import ExportMenu from '../components/ExportMenu.jsx';
+import Modal from '../components/Modal.jsx';
 import { api, exportUrl, backupUrl } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
 import {
@@ -356,6 +357,10 @@ function ReminderEmailsCard() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
   useEffect(() => {
     api
       .getReminderSettings()
@@ -379,6 +384,19 @@ function ReminderEmailsCard() {
       setDayError(err.message);
     } finally {
       setSavingDay(false);
+    }
+  }
+
+  async function handlePreview() {
+    setPreviewError('');
+    setPreviewLoading(true);
+    try {
+      const res = await api.previewReminder(template);
+      setPreview(res);
+    } catch (err) {
+      setPreviewError(err.message);
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -456,13 +474,23 @@ function ReminderEmailsCard() {
         </span>
       </label>
 
-      <button
-        onClick={handleSend}
-        disabled={sending}
-        className="mt-3 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
-      >
-        {sending ? 'Sending…' : 'Send reminder emails now'}
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={handleSend}
+          disabled={sending}
+          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+        >
+          {sending ? 'Sending…' : 'Send reminder emails now'}
+        </button>
+        <button
+          onClick={handlePreview}
+          disabled={previewLoading}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {previewLoading ? 'Loading…' : 'Preview'}
+        </button>
+      </div>
+      {previewError && <p className="mt-2 text-sm text-red-600">{previewError}</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {result && (
         <div className="mt-3 text-sm">
@@ -487,6 +515,29 @@ function ReminderEmailsCard() {
             </div>
           )}
         </div>
+      )}
+
+      {preview && (
+        <Modal title="Email preview" onClose={() => setPreview(null)}>
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="mb-1 block text-xs font-medium text-slate-500">Subject</span>
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-medium text-slate-900">
+                {preview.subject}
+              </p>
+            </div>
+            <div>
+              <span className="mb-1 block text-xs font-medium text-slate-500">Body</span>
+              <pre className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">
+                {preview.text}
+              </pre>
+            </div>
+            <p className="text-xs text-slate-400">
+              Shown with a placeholder name — each technician receives it with their own first
+              name filled in.
+            </p>
+          </div>
+        </Modal>
       )}
     </div>
   );

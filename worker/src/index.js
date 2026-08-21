@@ -26,7 +26,7 @@ import {
 } from './db.js';
 import { signToken, requireAuth, requireAdmin } from './auth.js';
 import { toCsv } from './csv.js';
-import { sendReminderEmails } from './email.js';
+import { sendReminderEmails, REMINDER_TEMPLATES } from './email.js';
 import { createBackup, listBackups, getBackup, pruneOldBackups } from './backup.js';
 
 const app = new Hono();
@@ -366,6 +366,13 @@ app.put('/api/admin/reminder-settings', requireAdmin, async (c) => {
   }
   await setReminderDay(c.env.DB, day);
   return c.json({ reminderDay: day });
+});
+
+app.get('/api/admin/reminder-preview', requireAdmin, async (c) => {
+  const templateId = c.req.query('template') === 'welcome' ? 'welcome' : 'monthly';
+  const { build } = REMINDER_TEMPLATES[templateId] || REMINDER_TEMPLATES.monthly;
+  const preview = build({ firstName: 'Jordan' }, c.env.APP_URL);
+  return c.json(preview);
 });
 
 app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
