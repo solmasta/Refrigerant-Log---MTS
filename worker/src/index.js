@@ -371,14 +371,25 @@ app.put('/api/admin/reminder-settings', requireAdmin, async (c) => {
 app.get('/api/admin/reminder-preview', requireAdmin, async (c) => {
   const templateId = c.req.query('template') === 'welcome' ? 'welcome' : 'monthly';
   const { build } = REMINDER_TEMPLATES[templateId] || REMINDER_TEMPLATES.monthly;
-  const preview = build({ firstName: 'Jordan' }, c.env.APP_URL);
+  const technicianId = c.req.query('technicianId');
+  const technician = (technicianId && (await getTechnician(c.env.DB, technicianId))) || {
+    firstName: 'Jordan',
+  };
+  const preview = build(technician, c.env.APP_URL);
   return c.json(preview);
 });
 
 app.post('/api/admin/send-reminders', requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const template = body.template === 'welcome' ? 'welcome' : 'monthly';
-  const technicians = await listTechniciansWithCounts(c.env.DB);
+  const technicianIds = Array.isArray(body.technicianIds) ? body.technicianIds : null;
+
+  let technicians = await listTechniciansWithCounts(c.env.DB);
+  if (technicianIds && technicianIds.length) {
+    const idSet = new Set(technicianIds);
+    technicians = technicians.filter((t) => idSet.has(t.id));
+  }
+
   const result = await sendReminderEmails(c.env, technicians, template);
   return c.json(result);
 });
