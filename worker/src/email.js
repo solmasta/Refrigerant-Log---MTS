@@ -54,7 +54,7 @@ export function buildReminderEmail(technician, appUrl) {
   const html = `
     <p>Hi ${escapeHtml(technician.firstName)},</p>
     <p>This is a monthly reminder that your refrigerant usage and purchase entries for ${escapeHtml(monthLabel)} must be submitted by the end of the month — <strong>${escapeHtml(deadlineLabel)}</strong>.</p>
-    ${loginUrl ? `<p><a href="${escapeHtml(loginUrl)}">Log in to Refrigerant Log MTS</a></p>` : ''}
+    ${loginButtonHtml(loginUrl)}
     <p>— Refrigerant Log MTS</p>
   `.trim();
 
@@ -100,12 +100,24 @@ export function buildWelcomeReminderEmail(technician, appUrl) {
       <li>Log any refrigerant purchases too, so we keep accurate records.</li>
     </ul>
     <p>It only takes a minute per entry, and it keeps us organized and compliant.</p>
-    ${loginUrl ? `<p><a href="${escapeHtml(loginUrl)}">Log in to Refrigerant Log MTS</a></p>` : ''}
+    ${loginButtonHtml(loginUrl)}
     <p>Thanks for staying on top of this — let me know if you have any questions.</p>
     <p>— Refrigerant Log MTS</p>
   `.trim();
 
   return { subject, text, html };
+}
+
+// Styles have to be inline -- most email clients (Gmail, Outlook) strip
+// <style> blocks and class-based CSS, so a plain <a> would otherwise
+// render as unstyled underlined text instead of an obvious button.
+function loginButtonHtml(loginUrl) {
+  if (!loginUrl) return '';
+  return `
+    <p style="margin: 24px 0;">
+      <a href="${escapeHtml(loginUrl)}" style="display: inline-block; background-color: #0284c7; color: #ffffff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-family: sans-serif;">Log in to Refrigerant Log MTS</a>
+    </p>
+  `.trim();
 }
 
 function escapeHtml(str) {
