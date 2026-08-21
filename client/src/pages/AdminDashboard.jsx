@@ -6,6 +6,7 @@ import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
 import ExportMenu from '../components/ExportMenu.jsx';
 import Modal from '../components/Modal.jsx';
+import EmailTemplateModal from '../components/EmailTemplateModal.jsx';
 import { api, exportUrl, backupUrl } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
 import {
@@ -363,8 +364,16 @@ function ReminderEmailsCard({ technicians = [] }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
 
+  const [emailClient, setEmailClient] = useState(null);
+  const [emailClientLoading, setEmailClientLoading] = useState(false);
+
   function toggleSelected(id) {
     setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  }
+
+  function currentRecipients() {
+    const emailable = technicians.filter((t) => t.email && t.email.trim());
+    return recipientMode === 'select' ? emailable.filter((t) => selectedIds.includes(t.id)) : emailable;
   }
 
   useEffect(() => {
@@ -405,6 +414,34 @@ function ReminderEmailsCard({ technicians = [] }) {
       setPreviewError(err.message);
     } finally {
       setPreviewLoading(false);
+    }
+  }
+
+  async function handleOpenEmailClient() {
+    setError('');
+    const recipients = currentRecipients();
+    if (recipients.length === 0) {
+      setError(
+        recipientMode === 'select'
+          ? 'Select at least one technician with an email on file.'
+          : 'No technicians have an email on file yet.'
+      );
+      return;
+    }
+    setEmailClientLoading(true);
+    try {
+      // Mailto opens one compose window for everyone at once, so it can't
+      // greet each recipient by name the way an automated send does --
+      // fall back to a group-friendly "Hi team," unless there's exactly
+      // one recipient, in which case we can still personalize it.
+      const singleId = recipients.length === 1 ? recipients[0].id : null;
+      const res = await api.previewReminder(template, singleId);
+      const body = recipients.length > 1 ? res.text.replace(/^Hi Jordan,/, 'Hi team,') : res.text;
+      setEmailClient({ subject: res.subject, body, to: recipients.map((r) => r.email).join(', ') });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEmailClientLoading(false);
     }
   }
 
@@ -523,19 +560,23 @@ function ReminderEmailsCard({ technicians = [] }) {
                 {technicians.map((t) => {
                   const hasEmail = Boolean(t.email && t.email.trim());
                   return (
-                    <li key={t.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(t.id)}
-                        disabled={!hasEmail}
-                        onChange={() => toggleSelected(t.id)}
-                      />
-                      <span className={hasEmail ? 'text-slate-800' : 'text-slate-400'}>
-                        {t.firstName} {t.lastName}
-                      </span>
-                      <span className="ml-auto text-xs text-slate-400">
-                        {hasEmail ? t.email : 'no email on file'}
-                      </span>
+                    <li key={t.id}>
+                      <label
+                        className={`flex items-center gap-2 px-3 py-2 text-sm ${hasEmail ? 'cursor-pointer' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(t.id)}
+                          disabled={!hasEmail}
+                          onChange={() => toggleSelected(t.id)}
+                        />
+                        <span className={hasEmail ? 'text-slate-800' : 'text-slate-400'}>
+                          {t.firstName} {t.lastName}
+                        </span>
+                        <span className="ml-auto text-xs text-slate-400">
+                          {hasEmail ? t.email : 'no email on file'}
+                        </span>
+                      </label>
                     </li>
                   );
                 })}
@@ -560,7 +601,19 @@ function ReminderEmailsCard({ technicians = [] }) {
         >
           {previewLoading ? 'Loading…' : 'Preview'}
         </button>
+        <button
+          onClick={handleOpenEmailClient}
+          disabled={emailClientLoading}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {emailClientLoading ? 'Loading…' : 'Open in email app'}
+        </button>
       </div>
+      <p className="mt-2 text-xs text-slate-500">
+        "Send reminder emails now" sends automatically from this app. "Open in email app" instead
+        pre-fills your own Mail/Gmail app so you send it yourself — useful if automated sending
+        isn't set up yet.
+      </p>
       {previewError && <p className="mt-2 text-sm text-red-600">{previewError}</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {result && (
@@ -615,6 +668,15 @@ function ReminderEmailsCard({ technicians = [] }) {
             </p>
           </div>
         </Modal>
+      )}
+
+      {emailClient && (
+        <EmailTemplateModal
+          subject={emailClient.subject}
+          body={emailClient.body}
+          initialTo={emailClient.to}
+          onClose={() => setEmailClient(null)}
+        />
       )}
     </div>
   );
