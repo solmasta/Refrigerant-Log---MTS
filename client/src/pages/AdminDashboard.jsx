@@ -598,10 +598,15 @@ function ReminderEmailsCard({ technicians = [] }) {
               </p>
             </div>
             <div>
-              <span className="mb-1 block text-xs font-medium text-slate-500">Body</span>
-              <pre className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">
-                {preview.text}
-              </pre>
+              <span className="mb-1 block text-xs font-medium text-slate-500">
+                Body (as it will appear in the recipient's inbox)
+              </span>
+              <iframe
+                title="Email body preview"
+                sandbox=""
+                srcDoc={`<body style="margin:0;padding:12px;font-family:sans-serif;font-size:14px;color:#334155;">${preview.html}</body>`}
+                className="h-72 w-full rounded-lg border border-slate-200 bg-white"
+              />
             </div>
             <p className="text-xs text-slate-400">
               {recipientMode === 'select' && selectedIds.length === 1
