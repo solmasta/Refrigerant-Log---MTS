@@ -44,7 +44,7 @@ export function buildReminderEmail(technician, appUrl) {
     '',
     `This is a monthly reminder that your refrigerant usage and purchase entries for ${monthLabel} must be submitted by the end of the month — ${deadlineLabel}.`,
     '',
-    loginUrl ? `Log in here: ${loginUrl}` : null,
+    loginUrl ? `Log in to Refrigerant Log MTS: ${loginUrl}` : null,
     '',
     '— Refrigerant Log MTS',
   ]
@@ -81,7 +81,7 @@ export function buildWelcomeReminderEmail(technician, appUrl) {
     '',
     `It only takes a minute per entry, and it keeps us organized and compliant.`,
     '',
-    loginUrl ? `Log in here: ${loginUrl}` : null,
+    loginUrl ? `Log in to Refrigerant Log MTS: ${loginUrl}` : null,
     '',
     `Thanks for staying on top of this -- let me know if you have any questions.`,
     '',
