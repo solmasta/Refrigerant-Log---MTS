@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useReferenceData } from '../hooks/useReferenceData.js';
 import { queueEntry } from '../utils/offlineQueue.js';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+const isoDaysAgo = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+};
+
+// Covers the vast majority of repair/top-off amounts as one-tap picks.
+// Larger jobs (e.g. decommissioning a big chiller) fall back to "Other".
+const AMOUNT_OPTIONS = {
+  lbs: Array.from({ length: 51 }, (_, i) => i), // 0-50 lbs
+  oz: Array.from({ length: 17 }, (_, i) => i), // 0-16 oz
+};
 
 const emptyForm = {
   date: todayIso(),
@@ -70,13 +82,29 @@ export default function LogForm({ onSaved }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Date of service">
-          <input
-            required
-            type="date"
-            value={form.date}
-            onChange={update('date')}
-            className={inputClass}
-          />
+          <div className="flex gap-2">
+            <input
+              required
+              type="date"
+              value={form.date}
+              onChange={update('date')}
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, date: todayIso() }))}
+              className="shrink-0 rounded-lg border border-slate-300 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, date: isoDaysAgo(1) }))}
+              className="shrink-0 rounded-lg border border-slate-300 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Yesterday
+            </button>
+          </div>
         </Field>
         <Field label="Equipment ID / Unit #">
           <input
@@ -145,25 +173,17 @@ export default function LogForm({ onSaved }) {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Amount added">
-          <input
-            type="number"
-            step="0.01"
-            min="0"
+          <AmountSelect
             value={form.amountAdded}
-            onChange={update('amountAdded')}
-            placeholder="0.00"
-            className={inputClass}
+            unit={form.unit}
+            onChange={(v) => setForm((f) => ({ ...f, amountAdded: v }))}
           />
         </Field>
         <Field label="Amount recovered">
-          <input
-            type="number"
-            step="0.01"
-            min="0"
+          <AmountSelect
             value={form.amountRecovered}
-            onChange={update('amountRecovered')}
-            placeholder="0.00"
-            className={inputClass}
+            unit={form.unit}
+            onChange={(v) => setForm((f) => ({ ...f, amountRecovered: v }))}
           />
         </Field>
         <Field label="Unit">
@@ -217,6 +237,63 @@ export default function LogForm({ onSaved }) {
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-50';
+
+// A dropdown of whole-number presets for the common case, with a manual
+// number entry that appears for anything the presets can't express (a
+// fraction, or a large decommission job) -- so EPA record accuracy never
+// depends on the preset list covering every possible amount.
+function AmountSelect({ value, unit, onChange }) {
+  const options = AMOUNT_OPTIONS[unit] || AMOUNT_OPTIONS.lbs;
+  const numericValue = value === '' ? null : Number(value);
+  const matchesPreset =
+    numericValue !== null && Number.isInteger(numericValue) && options.includes(numericValue);
+  const [otherMode, setOtherMode] = useState(value !== '' && !matchesPreset);
+
+  // A form reset (e.g. after saving) clears the value from outside this
+  // component -- drop back out of "Other" mode when that happens.
+  useEffect(() => {
+    if (value === '') setOtherMode(false);
+  }, [value]);
+
+  const showOther = otherMode || (value !== '' && !matchesPreset);
+
+  function handleSelect(e) {
+    const raw = e.target.value;
+    if (raw === 'other') {
+      setOtherMode(true);
+      onChange('');
+    } else {
+      setOtherMode(false);
+      onChange(raw);
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <select value={showOther ? 'other' : value} onChange={handleSelect} className={inputClass}>
+        <option value="">Select…</option>
+        {options.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+        <option value="other">Other (exact amount)…</option>
+      </select>
+      {showOther && (
+        <input
+          autoFocus
+          type="number"
+          step="0.01"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Exact amount"
+          className={inputClass}
+        />
+      )}
+    </div>
+  );
+}
 
 function Field({ label, children }) {
   return (
