@@ -18,9 +18,13 @@ import {
   setReminderDay,
   insertLog,
   listLogs,
+  getLog,
+  updateLog,
   deleteLog,
   insertPurchase,
   listPurchases,
+  getPurchase,
+  updatePurchase,
   deletePurchase,
   getSummary,
 } from './db.js';
@@ -234,6 +238,51 @@ app.get('/api/logs', requireAuth, async (c) => {
   return c.json({ logs });
 });
 
+app.patch('/api/logs/:id', requireAuth, async (c) => {
+  const user = c.get('user');
+  const existing = await getLog(c.env.DB, c.req.param('id'));
+  if (!existing) return c.json({ error: 'Log not found' }, 404);
+  if (user.role !== 'admin' && existing.technicianId !== user.technicianId) {
+    return c.json({ error: 'You can only edit your own entries' }, 403);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const {
+    date,
+    equipmentId,
+    location,
+    workOrderNumber,
+    refrigerantType,
+    serviceType,
+    amountAdded,
+    amountRecovered,
+    unit,
+    notes,
+  } = body;
+
+  if (!date || !equipmentId || !refrigerantType || !serviceType) {
+    return c.json(
+      { error: 'Date, equipment ID, refrigerant type, and service type are required' },
+      400
+    );
+  }
+
+  const log = await updateLog(c.env.DB, existing.id, {
+    date,
+    equipmentId: equipmentId.trim(),
+    location: (location || '').trim(),
+    workOrderNumber: (workOrderNumber || '').trim(),
+    refrigerantType,
+    serviceType,
+    amountAdded: amountAdded === '' || amountAdded === undefined ? null : Number(amountAdded),
+    amountRecovered:
+      amountRecovered === '' || amountRecovered === undefined ? null : Number(amountRecovered),
+    unit: unit || 'lbs',
+    notes: (notes || '').trim(),
+  });
+  return c.json({ log });
+});
+
 app.delete('/api/logs/:id', requireAdmin, async (c) => {
   const ok = await deleteLog(c.env.DB, c.req.param('id'));
   if (!ok) return c.json({ error: 'Log not found' }, 404);
@@ -286,6 +335,34 @@ app.get('/api/purchases', requireAuth, async (c) => {
 
   const purchases = await listPurchases(c.env.DB, filters);
   return c.json({ purchases });
+});
+
+app.patch('/api/purchases/:id', requireAuth, async (c) => {
+  const user = c.get('user');
+  const existing = await getPurchase(c.env.DB, c.req.param('id'));
+  if (!existing) return c.json({ error: 'Purchase not found' }, 404);
+  if (user.role !== 'admin' && existing.technicianId !== user.technicianId) {
+    return c.json({ error: 'You can only edit your own entries' }, 403);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const { date, refrigerantType, quantity, unit, cost, supplier, invoiceNumber, notes } = body;
+
+  if (!date || !refrigerantType || quantity === undefined || quantity === '') {
+    return c.json({ error: 'Date, refrigerant type, and quantity are required' }, 400);
+  }
+
+  const purchase = await updatePurchase(c.env.DB, existing.id, {
+    date,
+    refrigerantType,
+    quantity: Number(quantity),
+    unit: unit || 'lbs',
+    cost: cost === '' || cost === undefined ? null : Number(cost),
+    supplier: (supplier || '').trim(),
+    invoiceNumber: (invoiceNumber || '').trim(),
+    notes: (notes || '').trim(),
+  });
+  return c.json({ purchase });
 });
 
 app.delete('/api/purchases/:id', requireAdmin, async (c) => {
