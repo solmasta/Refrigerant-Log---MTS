@@ -20,7 +20,7 @@ function PendingBadge({ error }) {
   );
 }
 
-export default function LogsTable({ logs, showTechnician = false, onDelete }) {
+export default function LogsTable({ logs, showTechnician = false, onEdit, onDelete }) {
   if (!logs.length) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
@@ -46,13 +46,25 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
                 </div>
                 {log.location && <div className="text-xs text-slate-500">{log.location}</div>}
               </div>
-              {onDelete && (
-                <button
-                  onClick={() => onDelete(log.id)}
-                  className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
-                >
-                  Delete
-                </button>
+              {!log.pending && (onEdit || onDelete) && (
+                <div className="flex shrink-0 gap-3">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(log)}
+                      className="text-xs font-medium text-sky-600 hover:text-sky-700"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(log.id)}
+                      className="text-xs font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-slate-700">
@@ -92,7 +104,7 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
               <Th className="text-right">Added</Th>
               <Th className="text-right">Recovered</Th>
               <Th>Notes</Th>
-              {onDelete && <Th />}
+              {(onEdit || onDelete) && <Th />}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -121,14 +133,28 @@ export default function LogsTable({ logs, showTechnician = false, onDelete }) {
                 <Td className="max-w-xs text-slate-500">
                   <span className="line-clamp-2 whitespace-normal">{log.notes || '—'}</span>
                 </Td>
-                {onDelete && (
-                  <Td>
-                    <button
-                      onClick={() => onDelete(log.id)}
-                      className="text-xs font-medium text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
+                {(onEdit || onDelete) && (
+                  <Td className="whitespace-nowrap">
+                    {!log.pending && (
+                      <>
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(log)}
+                            className="text-xs font-medium text-sky-600 hover:text-sky-700"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(log.id)}
+                            className="ml-3 text-xs font-medium text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    )}
                   </Td>
                 )}
               </tr>

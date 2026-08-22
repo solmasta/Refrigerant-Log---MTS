@@ -281,6 +281,37 @@ export async function listLogs(db, { technicianId, refrigerantType, dateFrom, da
   return results.map(rowToLog);
 }
 
+export async function getLog(db, id) {
+  const row = await db.prepare('SELECT * FROM logs WHERE id = ?').bind(id).first();
+  return row ? rowToLog(row) : null;
+}
+
+export async function updateLog(db, id, entry) {
+  await db
+    .prepare(
+      `UPDATE logs SET
+        date = ?, equipment_id = ?, location = ?, work_order_number = ?,
+        refrigerant_type = ?, service_type = ?, amount_added = ?, amount_recovered = ?,
+        unit = ?, notes = ?
+       WHERE id = ?`
+    )
+    .bind(
+      entry.date,
+      entry.equipmentId,
+      entry.location,
+      entry.workOrderNumber,
+      entry.refrigerantType,
+      entry.serviceType,
+      entry.amountAdded,
+      entry.amountRecovered,
+      entry.unit,
+      entry.notes,
+      id
+    )
+    .run();
+  return getLog(db, id);
+}
+
 export async function deleteLog(db, id) {
   const result = await db.prepare('DELETE FROM logs WHERE id = ?').bind(id).run();
   return result.meta.changes > 0;
@@ -337,6 +368,34 @@ export async function listPurchases(db, { technicianId, refrigerantType, dateFro
     .bind(...params)
     .all();
   return results.map(rowToPurchase);
+}
+
+export async function getPurchase(db, id) {
+  const row = await db.prepare('SELECT * FROM purchases WHERE id = ?').bind(id).first();
+  return row ? rowToPurchase(row) : null;
+}
+
+export async function updatePurchase(db, id, entry) {
+  await db
+    .prepare(
+      `UPDATE purchases SET
+        date = ?, refrigerant_type = ?, quantity = ?, unit = ?, cost = ?,
+        supplier = ?, invoice_number = ?, notes = ?
+       WHERE id = ?`
+    )
+    .bind(
+      entry.date,
+      entry.refrigerantType,
+      entry.quantity,
+      entry.unit,
+      entry.cost,
+      entry.supplier,
+      entry.invoiceNumber,
+      entry.notes,
+      id
+    )
+    .run();
+  return getPurchase(db, id);
 }
 
 export async function deletePurchase(db, id) {

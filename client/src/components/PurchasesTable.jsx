@@ -1,6 +1,6 @@
 import { Th, Td, PendingBadge, hasValue } from './LogsTable.jsx';
 
-export default function PurchasesTable({ purchases, showTechnician = false, onDelete }) {
+export default function PurchasesTable({ purchases, showTechnician = false, onEdit, onDelete }) {
   if (!purchases.length) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
@@ -23,13 +23,25 @@ export default function PurchasesTable({ purchases, showTechnician = false, onDe
                 {p.refrigerantType}
                 {p.pending && <PendingBadge error={p.syncError} />}
               </div>
-              {onDelete && (
-                <button
-                  onClick={() => onDelete(p.id)}
-                  className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
-                >
-                  Delete
-                </button>
+              {!p.pending && (onEdit || onDelete) && (
+                <div className="flex shrink-0 gap-3">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(p)}
+                      className="text-xs font-medium text-sky-600 hover:text-sky-700"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(p.id)}
+                      className="text-xs font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-slate-700">
@@ -56,7 +68,7 @@ export default function PurchasesTable({ purchases, showTechnician = false, onDe
               <Th className="text-right">Cost</Th>
               <Th>Supplier</Th>
               <Th>Invoice #</Th>
-              {onDelete && <Th />}
+              {(onEdit || onDelete) && <Th />}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -76,14 +88,28 @@ export default function PurchasesTable({ purchases, showTechnician = false, onDe
                 </Td>
                 <Td className="whitespace-nowrap">{p.supplier || '—'}</Td>
                 <Td className="whitespace-nowrap">{p.invoiceNumber || '—'}</Td>
-                {onDelete && (
-                  <Td>
-                    <button
-                      onClick={() => onDelete(p.id)}
-                      className="text-xs font-medium text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
+                {(onEdit || onDelete) && (
+                  <Td className="whitespace-nowrap">
+                    {!p.pending && (
+                      <>
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(p)}
+                            className="text-xs font-medium text-sky-600 hover:text-sky-700"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(p.id)}
+                            className="ml-3 text-xs font-medium text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </>
+                    )}
                   </Td>
                 )}
               </tr>

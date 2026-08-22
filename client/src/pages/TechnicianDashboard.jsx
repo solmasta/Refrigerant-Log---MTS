@@ -4,6 +4,8 @@ import LogForm from '../components/LogForm.jsx';
 import PurchaseForm from '../components/PurchaseForm.jsx';
 import LogsTable from '../components/LogsTable.jsx';
 import PurchasesTable from '../components/PurchasesTable.jsx';
+import LogEditModal from '../components/LogEditModal.jsx';
+import PurchaseEditModal from '../components/PurchaseEditModal.jsx';
 import PendingSyncBanner from '../components/PendingSyncBanner.jsx';
 import { api } from '../api.js';
 import { getPendingEntries } from '../utils/offlineQueue.js';
@@ -20,6 +22,8 @@ export default function TechnicianDashboard() {
   const [purchases, setPurchases] = useState([]);
   const [pendingLogs, setPendingLogs] = useState([]);
   const [pendingPurchases, setPendingPurchases] = useState([]);
+  const [editingLog, setEditingLog] = useState(null);
+  const [editingPurchase, setEditingPurchase] = useState(null);
 
   const refresh = useCallback(() => {
     api.listLogs().then((d) => setLogs(d.logs));
@@ -89,16 +93,31 @@ export default function TechnicianDashboard() {
             <div className="space-y-8">
               <div>
                 <h2 className="mb-3 text-sm font-semibold text-slate-700">Recent usage logs</h2>
-                <LogsTable logs={[...pendingLogs, ...logs]} />
+                <LogsTable logs={[...pendingLogs, ...logs]} onEdit={setEditingLog} />
               </div>
               <div>
                 <h2 className="mb-3 text-sm font-semibold text-slate-700">Recent purchases</h2>
-                <PurchasesTable purchases={[...pendingPurchases, ...purchases]} />
+                <PurchasesTable purchases={[...pendingPurchases, ...purchases]} onEdit={setEditingPurchase} />
               </div>
             </div>
           )}
         </div>
       </main>
+
+      {editingLog && (
+        <LogEditModal
+          log={editingLog}
+          onClose={() => setEditingLog(null)}
+          onSaved={refreshAll}
+        />
+      )}
+      {editingPurchase && (
+        <PurchaseEditModal
+          purchase={editingPurchase}
+          onClose={() => setEditingPurchase(null)}
+          onSaved={refreshAll}
+        />
+      )}
     </div>
   );
 }

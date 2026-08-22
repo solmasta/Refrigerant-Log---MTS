@@ -102,9 +102,11 @@ export const api = {
   deleteTechnician: (id) => request(`/technicians/${id}`, { method: 'DELETE' }),
   createLog: (payload) => request('/logs', { method: 'POST', body: payload }),
   listLogs: (params = {}) => request(`/logs?${new URLSearchParams(params)}`),
+  updateLog: (id, payload) => request(`/logs/${id}`, { method: 'PATCH', body: payload }),
   deleteLog: (id) => request(`/logs/${id}`, { method: 'DELETE' }),
   createPurchase: (payload) => request('/purchases', { method: 'POST', body: payload }),
   listPurchases: (params = {}) => request(`/purchases?${new URLSearchParams(params)}`),
+  updatePurchase: (id, payload) => request(`/purchases/${id}`, { method: 'PATCH', body: payload }),
   deletePurchase: (id) => request(`/purchases/${id}`, { method: 'DELETE' }),
   adminSummary: () => request('/admin/summary'),
   sendReminders: (template = 'monthly', technicianIds = null) =>
